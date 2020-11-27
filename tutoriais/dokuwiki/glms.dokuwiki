@@ -1,0 +1,561 @@
+====== 5. Modelos Binomial e Poisson ======
+
+A função de verossimilhança serve para encontrar os parâmetros de uma distribuição de probabilidade que melhor descreve os dados. Para isso, muitas vezes precisamos permitir que os parâmetros das distribuições variem, em função uma ou mais variáveis preditoras ou independentes. 
+
+Nestes tutoriais vamos simular  contagens com médias que dependem de algumas outras variáveis que também foram medidas. Em seguida vamos construir passo a passo modelos estatísticos que expressam estas contagens como variáveis Poisson e binomial, cujos valores esperados são funções de variáveis independentes. Estes são os chamados modelos lineares generalizados (glm), para os quais já há rotinas de ajuste prontas para uso no R, e outros pacotes estatísticos.
+\\
+
+
+====== Conceitos ======
+
+  * Modelos não-gaussianos
+  * Modelos lineares generalizados
+  * Função de ligação
+  * Função logística, probito e logito
+  * Sobredispersão
+
+
+
+====== Tutoriais =======
+
+===== Modelos Poisson: Fecundidade de Solanum sp.  =====
+
+Neste tutorial vamos usar modelos Poisson para descrever a distribuição de número de frutos em plantas adultas de //Solanum sp.//. Mas ao invés de dados reais, criaremos os valores de uma distribuição Poisson. A vantagem da simulação é que podemos avaliar o desempenho dos modelos, pois conhecemos os valores dos parâmetros.
+
+
+
+==== Modelo Poisson sem variáveis preditoras ==== 
+
+Este é o modelo mais simples, que é o ajuste de uma distribuição Poisson com um único valor para seu parâmetro:
+
+ $$Y \ \sim \ P(\lambda = \beta_0)$$
+
+Que lemos:
+
+<WRAP center round box 60%>
+"O número de frutos por plantas é uma variável Poisson com um valor constante do parâmetro $\lambda$. Ou seja, o número de frutos por plantas ocorre a uma taxa constante." 
+
+</WRAP>
+
+==Passos iniciais==
+
+Iniciamos o R e carregamos os pacote //bbmle//, //car//  e //sads//((para a funcao [[http://finzi.psych.upenn.edu/R/library/sads/html/plotprofmle.html|plotprofmle]])). O pacote bbmle foi criado por [[http://ms.mcmaster.ca/~bolker/|Ben Bolker]] e tem 
+algoritmos de optimização para obter a máxima verosimilhança dos parâmetros. Se você ainda  não tem algum dos pacotes instalado 
+use o comando ''install.packages ("pacote")''. 
+
+<code rsplus>
+library(bbmle)
+library(car)
+library(sads)
+</code>
+
+Fixamos o gerador pseudo-aleatório de dados para todos obtermos exatamente o mesmos resultados:
+<code rsplus>
+set.seed(1234)
+</code>
+
+==Começamos a simulação:==
+
+Vamos sortear 1000 valores de uma distribuição Poisson com parâmetro $\lambda=5$, o que simula uma população de mil plantas com uma média de cinco frutos por indivíduo. Ao usarmos uma Poisson simulamos que os frutos ocorrem a uma taxa constante por planta, e que a cada fruto é um evento independente dos demais.
+
+<code rsplus>
+nplan<-1000
+lambda=5
+frutos<-rpois(nplan,lambda)
+</code>
+
+==Análise exploratória==
+Qual é a probabilidade teórica de encontrar uma planta sexualmente madura sem frutos?
+
+<code rsplus>
+dpois(0,lambda)
+</code>
+
+Compare com a proporção de plantas sem frutos na amostra simulada:
+<code rsplus>
+sum(frutos==0)/length(frutos)
+</code>
+
+Para fazer esta avaliação para todos os valores, comparamos a distribuição de probabilidade teórica com as proporções 
+empíricas. Comece com um gráfico de barras das proporções:
+
+<code rsplus>
+mfrut<-max(frutos)
+fa<-factor(frutos, levels=0:mfrut)
+prob.obs<-table(fa)/nplan
+par(las=1)
+plot(0:mfrut,prob.obs, xlab="Numero de frutos", 
+     ylab="Probabilidade", type="h", lwd=5)
+</code>
+
+E adicione os pontos com os valores teóricos esperados:
+<code rsplus>
+prob.tr<-dpois(0:mfrut, lambda)
+points(0:mfrut,prob.tr, pch=21, col="red")
+</code>
+
+==Ajuste do modelo==
+
+Definimos a função de máxima verossimilhança do parâmetro lambda da distribuição Poisson:
+
+<code rsplus>
+x<-frutos
+poisNLL<-function(lambda){
+-sum(dpois(x, lambda, log=TRUE))
+}
+</code>
+
+Há um teorema que garante que essa função de verossimilhança é unimodal e tem um único mínimo. Por isso podemos buscar a estimativa de máxima verossimilhança de $\lambda$ simplesmente experimentando diversos valores até encontrar um mínimo. Para isso criamos uma sequência de valores na vizinhança da média amostral e aplicamos a cada um a função de log-verossimilhança:
+
+<code rsplus>
+xvec<-seq(4.85,5.3, length=1000)
+LLest<-sapply(xvec,poisNLL)
+</code>
+
+Em seguida buscamos o valor mínimo:
+
+<code rsplus>
+minLLest<-min(LLest)
+lambdaLL.fb<-xvec[ LLest == min(LLest)]
+</code>
+
+
+Vamos comparar as estimativas do lambda obtidas com os métodos de força bruta, numéricos e analíticos((já que a média amostral equivale 
+à solução analítica para o MLE de $\lambda$ no caso da distribuição Poisson)).
+
+Faça a minimização numérica com a função ''mle2'':
+
+<code rsplus>
+lambdaLL.nm<-mle2(poisNLL, start=list(lambda=4))
+</code>
+
+E agora compare os três valores:
+
+<code rsplus>
+lambdaLL.fb
+lambdaLL.nm
+mean(frutos)
+</code>
+
+E vamos fazer a comparação gráfica, plotando a função de verosimilhança e os pontos obtidos:
+
+<code rsplus>
+mfrutos<-mean(frutos)
+LLest2<-LLest-min(LLest)
+plot(xvec,LLest2, typ="l", xlab="frutos", ylab="loglik")
+abline(v=mfrutos, col="blue", lwd = 3)
+abline(v=coef(lambdaLL.nm),col ="darkgray")
+abline(v=lambdaLL.fb, col="red")
+</code>
+
+
+==== Modelos Poisson com variáveis preditoras ====
+
+Vamos supor que a fecundidade das plantas poderia incrementar-se com um aumento da concentração de fósforo no solo. Simulamos esta situação fazendo da taxa de frutos por planta uma função de variáveis preditoras, como o fósforo:
+
+$$E[Y] \ = \ \lambda \ = \ e^{\beta_0 + \beta_i X_i}$$
+
+O que é o mesmo que
+
+$$\ln(\lambda) \ = \beta_0 + \beta_iX_i$$
+
+Ou seja, o logarítmo de $\lambda$ é uma função linear das variáveis preditoras $X_i$((no caso temos uma variável preditora, mas isso pode ser generalizado para quantas você quiser)). Essa é a **funcão de ligação logarítmica**. Sua vantagem é preservar a relação linear com as preditoras, e garantir valores positivos de $\lambda$, como deve ser na distribuição Poisson. Nosso modelo agora torna-se:
+
+$$Y \ \sim \ \mathrm{Pois}(\lambda = e^{\beta_0 + \beta_i X_i})$$
+
+Que lemos:
+
+<WRAP center round box 60%>
+"O número de frutos por plantas é uma variável Poisson cujo logaritmo do parâmetro $\lambda$ é uma função linear das variáveis reditoras $X_i$" 
+
+</WRAP>
+
+Então vamos simular a dependência de $\lambda$ ao fósforo! Primeiro definimos valores dos parâmetros:
+
+<code rsplus>
+set.seed(1234)
+phos<-runif(100,0,10)
+a= 1
+b= 0.3
+x<-phos
+</code>
+
+E então os valores esperados de frutos em função do nível de fósforo, conforme a função de ligação:
+
+<code rsplus>
+ydet<-exp(a+b*x)
+plot(x,ydet)
+</code>
+
+Agora para simular um processo Poisson sorteamos amostras Poisson com parâmetro lambda igual a estes valores esperados:
+
+<code rsplus>
+fec<-rpois(100,ydet)
+</code>
+
+E plotamos nossos dados:
+
+<code rsplus>
+par(las=1)
+plot(phos, fec, xlab="Fósforo mg/Kg", ylab="Número de frutos")
+</code>
+Definimos a função de verosimilhança para este modelo: 
+<code rsplus>
+poisglmNLL = function(a,b) {
+   ypred= exp(a+b*x)
+  -sum(dpois(fec,lambda=ypred, log=TRUE))
+}
+</code>
+
+Agora que simulamos um processo Poisson com valor esperado que é uma função do nível de fósforo, vamos ver o o ajuste de um modelo que descrevesse exatamente isso.
+Para estimar a máxima verosimilhança temos que fornecer na função de otimização um valor inicial para os parâmetros a e b.
+
+<code rsplus>
+chute <- list(a=2.5, b= 0.33)
+</code>
+
+<box red center 75% | Pergunta>
+Definir bons pontos de partida (//starting values//) para o otimizador é crucial, especialmente para funções de verossimilhança mais complexas, com muitas preditoras. Aqui o caso é simples e pouco sensível aos valores iniciais. Por isso "chutamos" um valor razoável. Mas mesmo neste caso há maneiras de obter bons palpites e ajudar o otimizador. Você tem alguma ideia de como obter uma estimativa inicial dos parâmetros?
+</box>
+
+E então otimizamos a função de verossimilhança, com a função ''mle2'':
+<code rsplus>
+mod.pois<-mle2(poisglmNLL, start= chute)
+</code>
+Conferimos o resumo do modelo:
+<code rsplus>
+summary(mod.pois)
+</code>
+
+E os perfis de verossimilhança das estimativas:
+<code rsplus>
+mod.pois.prof <- profile(mod.pois)
+par(mfrow=c(1,2))
+plotprofmle(mod.pois.prof) ## carregue o pacote sads para ter esta função
+par(mfrow=c(1,1))
+</code>
+
+Numa abordagem frequentista, os perfis são usados para estimar intervalos de confiança dos parâmetros, transformando a log-verossimilhança negativa em uma variável normal-padrão $z$ ((z = raiz quadrada da deviance, detalhes na [[http://finzi.psych.upenn.edu/R/library/stats4/html/profile.mle-class.html|ajuda da função profile]])). Esta aproximação à normal  quando a amostra é grande o suficiente, devido à propriedade de [[03-funcao-veros:03-funcao-veros#normalidade_assintotica|normalidade assintótica]] dos MLEs. Uma pista se isto é verdade é a forma dos perfis de verossimilhança. Se estes perfis se aproximam de parábolas a aproximação é válida, como parece ser o caso. aqui:
+
+Aplicando a função ''plot'' ao objeto da classe perfil você obtem perfis na escala desta transformação: 
+<code rsplus>
+plot(mod.pois.prof)
+</code>
+
+As linhas vermelhas neste gráfico marcam no eixo $x$ os quantis correspondentes a diferentes probabilidades acumuladas da normal. Estes quantis são usados como os limites dos intervalos de confiança para estas probabilidades. Compare os valores na figura para probabilidade de 95% com os obtidos com o comando:
+
+<code rsplus>
+confint(mod.pois)
+</code>
+
+
+Por fim, plotamos as curvas dos valores esperados de frutos por planta com os parâmetros e suas estimativas:
+<code rsplus>
+par(las=1)
+plot(phos,fec, xlab="Fósforo mg/Kg", ylab="Número de frutos" )
+a.est<-coef(mod.pois)[1]
+b.est<-coef(mod.pois)[2]
+curve(exp(a+b*x),add=TRUE, col="red")
+curve(exp(a.est +b.est*x), add=TRUE, col="blue", lty=2) #estimada
+legend("topleft", c("Parâmetro","Estimativa"),col=c("red","blue"), lty=c(1,2))
+</code>
+
+O que aconteceria se usássemos outro modelo para descrever estes dados? 
+Neste caso sabemos qual é o modelo correto, mas vamos simular esta situação, imaginando que a pesquisadora está 
+experimentando diferentes modelos. Usaremos a função de verosimilhança de uma binomial negativa, que permite agregação. Em nosso novo modelo mantemos a função de ligação logaritimica para a média, e supomos que o parâmetro de dispersão da binomial negativa é contante. Nosso modelo fica assim então:
+
+$$Y \ \sim \ NB(\mu = e^{\beta_0 + \beta_i X_i, \ k = \alpha_0})$$
+
+Que lemos:
+
+<WRAP center round box 60%>
+"O número de frutos por plantas é uma variável binomial negativa, cujo logaritmo do parâmetro $\mu$ é uma função linear das variáveis preditoras $X_i$, e o parâmetro $k$ é uma constante." 
+
+</WRAP>
+
+
+
+Vamos calcular a máxima verosimilhança deste modelo com a binomial negativa e comparar os modelos com o critério de informação de Akaike (AIC).
+
+<code rsplus>
+negbinNLL<- function(a, b, k){
+	ypred<-exp(a+b*x)
+	-sum(dnbinom(fec, mu=ypred, size=k, log = TRUE))
+        }
+</code>
+
+Tentamos  um valor inicial de k usando o método dos momentos. Como sabemos que a variância da binomial negativa é:
+
+$$\sigma^2= \mu + \frac{\mu^2}{k}$$
+
+Então podemos estimar um valor aproximado de k com:
+<code rsplus>
+med<-mean(fec)
+vari<-var(fec)
+k.init <-med^2/(vari-med)
+k.init
+</code>
+
+E então usamos este valor como palpite inicial para o valor de $k$ na otimização:
+
+<code rsplus>
+mod.negbin<- mle2(negbinNLL, start=list(a=2.5, b= 0.33, k=k.init))
+</code>
+
+E agora conferimos os parâmetros estimados:
+
+<code rsplus>
+summary(mod.negbin)
+</code>
+
+E podemos comparar os modelos com a função AICtab , que expressa o grau de plausibilidade relativa do modelo Poisson, comparado com a binomial negativa:
+
+<code rsplus>
+AICtab(mod.pois,mod.negbin, delta=T, sort=T, weights = TRUE)
+</code>
+
+O modelo com mais apoio dos dados, ou mais plausível, é o modelo com distribuição Poisson. Porém, a diferença nos valores do AIC é menor que 2, o que indica que o modelo com a Binomial Negativa tem plausibilidade equivalente, para esta amostra. 
+
+
+===== Modelos com distribuição binomial: Infestação por Fusarium sp. =====
+
+Agora pensemos que os frutos das mesmas plantas solanáceas são atacados pelo fungo //Fusarium sp.//, murchando-os. Pensemos que  esse fungo habita no solo e portanto só ataca os frutos quando eles amadurecem e caem.
+
+Vamos usar a distribuição binomial para descrever o número de frutos infestados, entre o total de frutos produzidos pelas planta. A probabilidade de infestação dos frutos pode  ser constante ou depender de algum fator como por exemplo o grau de 
+umidade relativa do micro-habitat onde se encontra a planta. O número de "tentativas" (parâmetro $N$ da binomial) será variável entre as plantas,  pois corresponde ao número de frutos que ela tenha. Vamos simular esta situação e depois verificar como um modelo binomial se sai em descrevê-la. O modelo que vamos construir pode ser representado assim:
+
+$$Y \ \sim \ \mathrm{Bin}(p = f(\beta_0 + \beta_i X_i), \ N = n_i)$$
+
+Que lemos:
+
+<WRAP center round box 60%>
+"O número $Y$ de frutos infestados de cada planta é uma variável binomial cuja uma função do parâmetro $p$ é uma função linear das variáveis preditoras $X_i$, e o parâmetro $N$ corresponde ao total de frutos $n_i$ de cada planta." 
+</WRAP>
+
+
+Nas seções seguintes explicamos qual será a função de ligação $f(\cdot)$ neste caso. 
+
+==== Simulando os dados ====
+
+Já temos um vetor com número de frutos de cada planta em nossa amostra. Primeiro descartamos as plantas sem frutos:
+<code rsplus>
+fec1<-fec[fec!=0]
+num.plant<-length(fec1)
+</code>
+
+E simulamos o número de frutos atacados por planta:
+
+Agora vamos simular uma variável ambiental. Por exemplo, o grau de umidade do solo na vizinhança da planta, que varia entre 30 a 100%, com probabilidade uniforme.
+
+<code rsplus>
+set.seed(4444)
+ur<-runif(num.plant, 0.3, 1)
+</code>
+
+E usamos a **função de ligação logística** para determinar e posteriormente simular o grau de infestação do fungo de acordo a umidade 
+relativa do ambiente. Esta função estabelece seguinte relação do parâmetro $p$ com as variáveis preditoras $X_i$
+
+$$p \ = \frac{e^{\beta_0+\beta_i X_i}}{1+e^{\beta_0+\beta_i X_i}}$$ 
+
+A logística restringe os resultados esperados ao intervalo entre 0 a 1, mesmo que a variável 
+preditora tenha valores muito grandes ou pequenos, por isso é adequada para descrever o parâmetro $p$ nos 
+modelos de distribuição binomial. Assim como a função de ligação log para processos Poisson, a logística "preserva" uma relação linear das preditoras com a resposta. Mais formalmente, a ligação faz com que uma transformação do parâmetro seja uma função linear das variáveis preditoras. No caso do modelo binomial, aplicar a logística acima é o mesmo que transformar $p$ para seu logito:
+
+$$\ln \frac{p}{1-p} \ = \beta_0+\beta_iX_i $$
+
+E novamente encontramos uma transformação do parâmetro -o logito $\ln(p/(1-p))$- que pode ser expressa como uma função linear das preditoras sem violar pressupostos da distribuição usada no modelo, no caso a binomial((funções de ligação são convenientes por outras razões. Se esses detalhes interessarem, veja as leituras recomendadas.)).
+
+Vamos então usar tudo isso para construir a simulação de efeito das preditoras sobre a proporção de frutos murchos:
+
+<code rsplus>
+a<- -4
+b<- 7
+ydet<-exp(a+b*ur)/(1 + exp(a +b*ur))
+plot(ur,ydet)
+frut.mur<-rbinom(num.plant,size=fec1,prob= ydet)
+</code>
+
+O número de frutos intactos é o complemento dos murchos.
+
+<code rsplus>
+frut.sau <- fec1-frut.mur 
+</code>
+
+Para uma avaliação visual, plotamos os fruto sãos e murchos por planta e arranjamos as plantas em ordem crescente exposição à umidade relativa:
+
+<code rsplus>
+datos<-data.frame(frut.sau,frut.mur,ur)
+datos.ur<-datos[order(datos$ur),]
+conjun<-datos.ur[,1:2]
+conjun.m<-as.matrix(conjun)
+
+barplot(t(conjun.m),beside=F, col=c("darkgray","darkblue"), ylim=c(0,80), ylab= "Número de Frutos",
+xlab= "Plantas", cex.names=0.4)
+legend("topright", c("frutos intactos", "frutos murchos"), col = c("darkgray","darkblue"), pch=c(19,19))
+arrows(15.8,62,100,62)
+text(60,64, "Umidade", cex=1.8)
+</code>
+
+==== Ajuste do modelo ====
+
+Para ajustar nosso modelo binomial definimos sua função de verossimilhança:
+
+<code rsplus>
+binomNLL<- function(a,b){
+	prob.det=exp(a+b*ur)/(1 +exp(a+b*ur))
+	-sum(dbinom(frut.mur, size=N, prob=prob.det, log=TRUE))
+	}
+</code>
+
+E agora vamos encontrar o mínimo da função de log-verossimilhança negativa com otimização computacional com a função ''mle2''.
+
+Otimizamos:
+<code rsplus>
+mod.bin<-mle2(binomNLL, start=list(a =-3,b =9), data =list(N= fec1, k = frut.mur))
+</code>
+
+<box red 75% |Pergunta>
+Como no tutorial anterior, temos que definir valores dos parâmetros para o otimizador iniciar. O comando acima usou um "chute informado". Descubra como chegamos a ele. Uma pista: tem a ver com plotar a razão dos 
+frutos murchos/total dos frutos na escala de logitos. Lembre-se que a função logito lineariza a curva logística. 
+</box>
+
+
+Alternativamente podemos usar a interface de fórmula da função ''mle2'' para fazer os dois passos simultaneamente:
+
+<code rsplus>
+mod.bin2<-mle2(frut.mur~dbinom(prob = exp(a + b*ur)/(1 + exp(a + b*ur)), size = fec1),
+start = list(a= -3, b = 9))
+</code>
+
+Avaliamos os perfis de verossimilhança:
+
+<code rsplus>
+par(mfrow=c(1,2))
+plotprofmle(profile(mod.bin)) ## carregue o pacote sads para ter esta função
+par(mfrow=c(1,1))
+</code>
+
+
+Finalmente comparamos a função logística simulada com a estimada. No gráfico, o tamanho do ponto é proporcional ao número de frutos que a planta tinha.
+
+<code rsplus>
+prop.mur<-frut.mur/fec1 #Proporção de plantas murchas
+par(las=1)
+plot(ur, prop.mur,cex=fec1/25, xlab="Umidade relativa", ylab="Proporção Frutos Infectados")
+a.esti<-coef(mod.bin)[1]
+b.esti<-coef(mod.bin)[2]
+curve(exp(a+b*x)/(1+exp(a+b*x)),add=TRUE, col="red")
+curve(exp(a.esti+b.esti*x)/(1+ exp(a.esti +b.esti*x)), add=TRUE, col="blue", lty=2) #estimada
+legend("topleft", c("Parâmetro","Estimativa"),col=c("red","blue"), lty=c(1,2))
+</code>
+
+
+===== GLMs =====
+
+Para modelos Poisson e binomiais como os dos tutoriais acima há uma teoria específica e um método de ajuste mais eficiente. São os [[http://en.wikipedia.org/wiki/Generalized_linear_model|glm]] (//generalized linear models//). 
+
+Neste tutorial vamos comparar os resultados  usando a função padrão no R para esses modelos, [[http://finzi.psych.upenn.edu/R/library/stats/html/glm.html|glm]], com os resultados obtidos antes. Os principais argumentos da função ''glm'' são ''family'', que define a distribuição, e neste o argumento 'link', para definir a função de ligação. O padrão de ''link'' para Poisson é a logarítmica e a para binomial a logística, como usamos em ajustes numéricos. Para saber mais consulte a ajuda da função e as leituras indicadas.
+
+==== glm Poisson ====
+
+Uma regressão de uma variável Poisson como a que fizemos equivale a um //glm// com distribuição Poisson e função de ligação log.
+Compare os resultados do modelo Poisson que ajustamos com o ''mle2'' com os resultados obtidos com a função ''glm'' do R:
+
+<code rsplus>
+glm.pois <- glm(fec~phos,family=poisson(link="log"))
+summary(glm.pois)
+summary(mod.pois)
+AIC(mod.pois)
+AIC(glm.pois)
+</code> 
+
+Cada vez que fazemos um //glm// com 
+distribuição Poisson e função de ligação log, compramos a premissa de uma relação exponencial entre a variável preditora e o valor esperado da variável dependente. Isso é o mesmo que supor uma relação linear entre a variável preditora e o logaritmo do valor esperado da dependente.
+
+====glm Binomial====
+Uma regressão de uma variável binomial como a que fizemos equivale a um //glm// com distribuição binomial e função de ligação logística.
+Compare os resultados do modelo binomial que ajustamos com o ''mle2'' com os resultados obtidos com a função ''glm'' do R. Note que para esta função a variável-resposta, do lado esquerdo da fórmula do modelo, é uma matriz com números de observações poisitivas e negativas.
+
+<code rsplus>
+glm.bin <- glm(cbind(frut.mur,frut.sau)~ur, 
+               data=datos,family=binomial(link="logit"))
+summary(mod.bin)
+summary(glm.bin)               
+</code>
+
+
+
+
+\\
+------------------
+\\
+
+====== Questões para discussão ======
+
+===== Predador com saciação =====
+
+Em um experimento, girinos em diferentes quantidades ficaram expostos a um predador por um certo tempo. Os dados são o número inicial de girinos expostos e o número predado. Use modelos de regressão binomial para testar se as observações dão suporte à hipótese de que o número final predado é afetado pelo número inicial. 
+
+===DICAS:=== 
+  - Comece inspecionando gráficos do número de (a) girinos predados pelo número inicial e (b) da proporção de predados em relação ao número inicial.
+  - Quando está abaixo da saciação o predador não ncessariamente captura 100% das preasas disponíveis. Pode ser que ele capture uma proporção fixa das presas. A função de ligação logística pode ser generalizada para qualquer assíntota $M$:
+
+$$p \ = \ \frac{M e^{a + bX}}{1+ e^{a + bX}}$$
+
+===Dados===
+  * {{:05-binomial-poisson:girinos.csv|}}
+
+
+
+===== Número de parasitas por hospedeiro =====
+
+Tomou-se uma amostra de 120 peixes, dos quais contaram-se todos os ectoparasitas. De cada peixe tomou-se o comprimento e registrou-se o sexo. Use as funções glm e glm.nb para investigar a relação entre número de parasitas e atributos dos peixes. 
+
+===DICA:=== 
+Comece inspecionando os gráficos das relações entre a variável resposta e cada uma das preditoras.
+
+===Dados===
+  * {{:05-binomial-poisson:peixes.csv|}}
+
+===== Modelando média e dispersão =====
+
+Use o conjunto de dados a seguir para construir e comparar modelos de regressão Poisson e binomial negativa. Avalie todas as hipóteses de efeito linear da variável preditora com função de ligação log.
+
+===DICA:=== 
+Comece enumerando os modelos possíveis. Para a regressão binomial negativa o efeito pode ser sobre a média e/ou o parâmetro de dispersão. Para cada distribuição há os modelos de ausência de efeitos.
+
+===Dados===
+{{:05-binomial-poisson:glm_q3.csv|}}
+
+====== Exercícios ======
+
+Faça os exercícios desta unidade no sistema [[http://www.lage.ib.usp.br/rserve/|notaR]].
+
+====== Recursos para Estudo ======
+
+===== Leituras =====
+=== Principais ===
+  * Bolker, B.M. 2008 Ecological Models and Data in R Princeton: Princeton University Press:
+     * Cap.6 - Likelihood and all that, seção 6.3.1
+     * Cap.9 - Standard Statistics Revisited, seção 9.4
+
+=== Complementares ===
+  * Crawley, M.J. 2007. The R Book. (caps.13,14, e 16)
+
+==== Para saber mais sobre glms====
+
+  * Dobson, A.J. 1990. An Introduction to Generalized Linear Models. London: Chapman and Hall.
+  * McCullagh P. & Nelder, J.A. 1989. Generalized Linear Models. London: Chapman and Hall.
+  * [[http://bbolker.github.io/mixedmodels-misc/glmmFAQ.html|GLMMs FAQs]], por Ben Bolker e colaboradores. Excelente guia prático para glms com efeitos mistos
+  * Rodríguez, G. 2007. [[http://data.princeton.edu/wws509/notes/|Lecture Notes on Generalized Linear Models.]]
+
+=== Análises de resíduos em glms ===
+
+Os resíduos usados em regressão Gaussiana não são os melhores para diagnósticos de glms. Há vários outros tipos de cálculos de resíduos propostos. Um material básico para se aprofundar:
+
+  * As revisões clássicas sobre diagnóstico de GLMs são o capítulo 12 do livro de [[http://www.utstat.toronto.edu/~brunner/oldclass/2201s11/readings/glmbook.pdf|McCullagh & Nelder]] e seção 2.3.4 do [[https://reneues.files.wordpress.com/2010/01/an-introduction-to-generalized-linear-models-second-edition-dobson.pdf|livro da Dobson]]. 
+
+  * [[https://www.datascienceblog.net/post/machine-learning/interpreting_generalized_linear_models/|Um bom resumo]] sobre diferentes tipos de resíduos disponíveis para objetos ''glm'' no R.
+  
+  * [[https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html|Vinheta do pacote Dharma]], explicação muito didática de diagnóstico comum outro tipo de resíduo, os resíduos quantílicos, que pdoem ser aplicados a GLMs e também a modelos com efeitos aleatórios.
+

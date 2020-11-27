@@ -1,0 +1,587 @@
+====== 8. Fundamentos Teóricos da Inferência por Verossimilhança ======
+
+
+\\
+
+====== Conceitos ======
+   * Lei da Verossimilhança 
+   * Princípio da Verossimilhança
+   * Suporte para Inferência Estatística
+
+
+====== Tutorial ======
+
+
+
+===== Lei da Verossimilhança =====
+
+Como já foi visto no [[03-funcao-veros:03-funcao-veros|tutorial]] sobre a Função de Verossimihança, a
+Lei da Verossimilhança pode ser enunciada da seguinte forma:
+
+Dada uma variável aleatória $X$, cujo comportamento pode ser explicado por duas hipóteses: $H_A$ e $H_B$.
+
+  * A hipótese $H_A$ afirma que a observação $X=x$ seria observada com probabilidade $p_A(x)$.
+  * A hipótese $H_B$ afirma que a observação $X=x$ seria observada com probabilidade $p_B(x)$.
+
+A observação $X=x$ é uma evidência em favor de $H_A$ **vis-a-vis** (face-a-face) $H_B$
+se, e somente se, 
+
+$$p_A(x) > p_B(x)$$.
+
+A **força de evidência** em favor de $H_A$ vis-a-vis $H_B$ é dada pela **razão de verossimilhança**:
+
+$$ \frac{p_A(x)}{p_B(x)}$$.
+
+
+==== A Observação Empírica comanda a Lei da Verossimilhança ====
+
+
+=== Hipóteses sobre Valores do Parâmetro de um Modelo ===
+
+Tomemos o exemplo de um laboratório que realizou o seguinte experimento: um certo produto foi ministrado a $20$ cobaias para se comparar duas hipóteses: 
+  *  $H_A$ a probabilidade do produto causar a morte é $p = 0.5$
+  *  $H_B$ a probabilidade do produto causar a morte é $p = 0.3$
+
+Um ponto importante é que a observação do número de cobaias mortas é que irá definir qual hipótese é favorecida e
+qual hipótese é desfavorecida. 
+
+Vejamos as probabilidades que a hipótese $H_A$ estabelece para cada uma das observações possíveis (1, 2, ..., 20):
+<code rsplus>
+pa = dbinom(0:20, 20, prob=0.5)
+barplot(pa, width=1, space=0.1, col="blue")
+axis(1, 1, label=0:20, at=0:20*1.1+(1.1/2) )
+</code>
+
+No caso da hipótese $H_B$ temos:
+<code rsplus>
+pb = dbinom(0:20, 20, prob=0.3)
+barplot(pb, width=1, space=0.1, col="red")
+axis(1, 1, label=0:20, at=0:20*1.1+(1.1/2) )
+</code>
+
+A Razão de Verossimilhança para as observações possíveis pode ser facilmente obtida:
+<code rsplus>
+raz <- pa/pb
+barplot(raz, width=1, space=0.1, col="darkgreen")
+axis(1, 1, label=0:20, at=0:20*1.1+(1.1/2) )
+</code>
+
+A escala da Razão de Verossimilhança pode facilmente nos confundir.  É melhor olharmos a Razão de Verossimilhança em termos da diferença da Log-Verossimilhança Negativa (com a indicação da Razão de 8, como limite definidor):
+<code rsplus>
+barplot(-log(raz), width=1, space=0.1, col="darkgreen")
+axis(1, 1, label=0:20, at=0:20*1.1+(1.1/2) )
+abline( h = c(log(8), -log(8)), col="red", lty=2 )
+</code>
+
+Como a transformação inclui a mudança de sinal, a interpretação é que os valores positivos favorecem a hipótese $H_B$, enquanto que os valores negativos favorecem a hipótese $H_A$.
+
+**Resultado:**
+   * O número de cobaias mortas no experimento definirá qual das duas hipóteses é mais plausível.
+   * Algumas observações favorecerão $H_A$ (11 ou mais mortes), outras $H_B$ (6 ou menos).  Outras ainda não nos permitirão distinguir qual das duas é mais plausível (entre 7 e 10).
+
+**CONCLUSÕES:** 
+
+    - Definido o modelo de trabalho, **os dados** são a única evidência para definir qual a hipótese é mais plausível.  
+    - A evidência nem sempre é **conclusiva**.
+
+
+
+
+=== Hipóteses sobre Modelos Diferentes ===
+
+Os dados também indicam, através da verossimilhança, qual o modelo mais plausível numa situação de comparação.  O arquivo {{:08-inferencia:caxeta-3parcelas.csv|caxeta-3parcelas.csv}} tem os dados de DAP (diâmetro à altura do peito) de árvores em três parcelas instaladas em "caixetais" na região do Vale do Ribeira (São Paulo). 
+
+Comparemos a distribuição Weibull e a distribuição Gama, como modelos para a distribuição do DAP em cada uma das parcelas.
+
+Primeiramente ler os dados e carregar o pacote "''MASS''" que possui a função "''fitdistr''" para ajuste de distribuições por máxima verossimilhança:
+<code rsplus>
+cax3p = read.csv("caxeta-3parcelas.csv",header=T,as.is=T,sep=";")
+library(MASS)
+</code>
+
+O segundo passo é ajustar os modelos (Weibull e Gama) para cada parcela. 
+<code rsplus>
+# Ajuste da Dist. Weibull para as três parcelas
+weib1 = fitdistr( cax3p$dap[ cax3p$parcela==1 ] - 47, "weibull", start=list(shape=1, scale=10) )
+weib2 = fitdistr( cax3p$dap[ cax3p$parcela==2 ] - 47, "weibull", start=list(shape=1, scale=10) )
+weib3 = fitdistr( cax3p$dap[ cax3p$parcela==3 ] - 47, "weibull", start=list(shape=1, scale=10) )
+ 
+# Ajuste da Dist. Gamma para as três parcelas
+gamm1 = fitdistr( cax3p$dap[ cax3p$parcela==1 ] - 47, "gamma", start=list(shape=1, scale=10) )
+gamm2 = fitdistr( cax3p$dap[ cax3p$parcela==2 ] - 47, "gamma", start=list(shape=1, scale=10) )
+gamm3 = fitdistr( cax3p$dap[ cax3p$parcela==3 ] - 47, "gamma", start=list(shape=1, scale=10) )
+</code>
+
+
+Comparação dos modelos nas parcelas uma a uma:
+<code rsplus>
+# Comparação Parcela 1
+hist( cax3p$dap[ cax3p$parcela==1 ], prob = TRUE )
+curve( dweibull(x, shape=weib1$estimate["shape"] , scale=weib1$estimate["scale"]), 40, 250, col="red", add=TRUE)
+curve( dgamma(x, shape=gamm1$estimate["shape"] , scale=gamm1$estimate["scale"]), 40, 250, col="blue", add=TRUE)
+AIC(weib1) - AIC(gamm1)
+ 
+# Comparação Parcela 2
+hist( cax3p$dap[ cax3p$parcela==2 ], prob = TRUE )
+curve( dweibull(x, shape=weib2$estimate["shape"] , scale=weib2$estimate["scale"]), 40, 400, col="red", add=TRUE)
+curve( dgamma(x, shape=gamm2$estimate["shape"] , scale=gamm2$estimate["scale"]), 40, 400, col="blue", add=TRUE)
+AIC(weib2) - AIC(gamm2)
+ 
+# Comparação Parcela 3
+hist( cax3p$dap[ cax3p$parcela==3 ], prob = TRUE )
+curve( dweibull(x, shape=weib3$estimate["shape"] , scale=weib3$estimate["scale"]), 40, 400, col="red", add=TRUE)
+curve( dgamma(x, shape=gamm3$estimate["shape"] , scale=gamm3$estimate["scale"]), 40, 400, col="blue", add=TRUE)
+AIC(weib3) - AIC(gamm3)
+ 
+</code>
+
+
+**Questões:**
+  * Qual o modelo mais plausível em cada parcela?
+  * O modelo mais plausível é sempre o mesmo em todas as parcelas?
+  * É possível discriminar o modelo mais plausível em todas as parcelas?
+  * A diferença de plausibilidade entre os modelos segundo o AIC é compatível com as diferenças observadas nos gráficos?
+
+
+===== Princípio da Verossimilhança =====
+
+O [[http://en.wikipedia.org/wiki/Likelihood_principle|Princípio da Verossimilhança]] estabelece que a **Função de Verossimilhança** contem **TODA** evidência contida nos dados a respeito de uma dada hipótese. Esta hipótese pode ser um modelo, ou o valor de parâmetro de um modelo.   Assim, a **Razão de Verossimilhança** é uma medida absoluta da força de evidência na comparação de duas hipóteses, independentemente do conjunto de dados utilizado ou das hipóteses comparadas.
+
+
+==== Dois Métodos com a Mesma Evidência ====
+
+Voltemos ao exemplo da aplicação de um produto em cobaias para verificar a taxa de mortalidade.  Nesse caso temos dois laboratórios que testaram o produto:
+  * __Laboratório 1:__ Aplicou o produto em 20 cobaias das quais 6 morreram.
+  * __Laboratório 2:__ Foi aplicando o produto em várias cobaias, com a determinação que quando a sexta morte ocorresse o experimento terminaria.  A vigésima cobaia a receber o produto foi a sexta a morrer.
+
+A questão principal agora é saber qual o valor mais plausível para o parâmetro $p$, que indica a probabilidade de morte das cobaias.
+
+Vejamos as curvas de verossimilhança para nos dois laboratórios:
+
+<code rsplus>
+p = seq(0.01, 0.99, by=0.01)
+lik.binom = dbinom(6, 20, p)     # Lab 1: dist. Binomial
+lik.nbinom = dnbinom(14, 6, p)   # Lab 2: dist. Binomial Negativa
+plot(p, lik.binom, type="l", ylab="Verossimilhança", col="blue")
+lines(p, lik.nbinom, col="red")
+</code>
+
+Aparentemente as curvas não são as mesmas.  Mas devemos nos lembrar que o **Princípio da Verossimilhança** generaliza a **Razão de Verossimilhança**.  Portanto devemos apresentar a curva de **Verossimilhança Relativa** (( //Verossimilhança Normalizada//, na terminologia de Edwards)), que obtemos dividindo cada valor de verossimilhança pelo máximo:
+<code rsplus>
+lik.binom = lik.binom / max(lik.binom)
+lik.nbinom = lik.nbinom / max(lik.nbinom)
+plot(p, lik.binom, type="l", ylab="Verossimilhança Relativa", col="blue", lwd=8)
+lines(p, lik.nbinom, col="red", lwd=2)
+</code>
+
+
+**CONCLUSÕES:** 
+    - As curvas de verossimilhança (relativa/normalizada) são idênticas nos dois laboratórios, mostrando que a observação de 6 cobaias mortas em 20 representa **exatamente** a mesma evidência empírica a respeito do valor mais plausível do parâmetro $p$, independentemente de como os dados foram gerados.
+  - Portanto, **o espaço amostral é irrelevante**, uma vez definidos os modelos concorrentes e observado o dado.
+    - Curvas de **Verossimilhança Relativa** (ou //Verossimilhança Normalizada//) representam a força de evidência a favor das MLE (estimativas de máxima verossimilhança) contra todos os demais valores possíveis, independentemente dos dados utilizados ou do modelo considerado.
+    - Consequentemente, **Intervalos de Verossimilhança**  (para razão de 8, por exemplo) tem exatamente a mesma interpretação, independentemente dos dados utilizados ou do modelo considerado.
+
+
+==== Força de Evidência e Tamanho de Amostra ====
+
+Consideremos o mesmo exemplo das cobaias, mas comparemos o primeiro laboratório com outros dois laboratórios que possuem mais recursos para o experimento:
+  * __Laboratório 1:__ Aplicou o produto em 20 cobaias das quais 6 morreram.
+  * __Laboratório 2:__ Aplicou o produto em 200 cobaias das quais 60 morreram.
+  * __Laboratório 3:__ Aplicou o produto em 2000 cobaias das quais 600 morreram.
+
+Vejamos as curvas de verossimilhança desses 3 laboratórios:
+<code rsplus>
+p = seq(0.01, 0.99, by=0.01)
+lik.binom1 = dbinom(6, 20, p)         # Lab 1: dist. Binomial
+lik.binom2 = dbinom(60, 200, p)       # Lab 2: dist. Binomial
+lik.binom3 = dbinom(600, 2000, p)     # Lab 3: dist. Binomial
+plot(p, lik.binom1, type="l", ylab="Verossimilhança", col="blue")
+lines(p, lik.binom2, col="red")
+lines(p, lik.binom3, col="green")
+</code>
+
+Vejamos as curvas de verossimilhança **RELATIVA** desses 3 laboratórios:
+<code rsplus>
+lik.binom1 = lik.binom1/ max(lik.binom1)
+lik.binom2 = lik.binom2/ max(lik.binom2)
+lik.binom3 = lik.binom3/ max(lik.binom3)
+plot(p, lik.binom1, type="l", ylab="Verossimilhança Relativa", col="blue")
+lines(p, lik.binom2, col="red")
+lines(p, lik.binom3, col="green")
+</code>
+
+Façamos um //"zoom"// na curva de log-verossimilhança negativa relativa na vizinhaça da MLE:
+<code rsplus>
+nlik.binom1 = -log(lik.binom1)
+nlik.binom2 = -log(lik.binom2)
+nlik.binom3 = -log(lik.binom3)
+plot(p, nlik.binom1, type="l", ylab="Log-Veros. Neg. Relativa", col="blue", xlim=c(0.2,0.4))
+lines(p, nlik.binom2, col="red")
+lines(p, nlik.binom3, col="green")
+</code>
+
+**Questões:**
+   * A **curva de verossimilhança** é sensível ao tamanho da amostra? Como?
+   * A **curva de verossimilhança RELATIVA** é sensível ao tamanho da amostra? Como?
+   * A **força de evidência** em favor do MLE aumenta com o tamanho da amostra? Por que?
+   * Qual o impacto do tamanho da amostra sobre o **intervalo de verossimilhança**? Por que?
+
+
+
+
+===== Suporte para Inferência Estatística =====
+
+A consequência **imediata** da combinação da Lei e do Princípio da Verossimilhança é que a função de verossimilhança, ou mais especificamente a //função de log-verossimilhança negativa//  é  o **suporte necessário e suficiente** à construção da inferência estatística:
+  * Por **suporte** entende-se a base **teórica** e **empírica** para se construir e implementar a inferência estatística.
+  * Como suporte **necessário** entende-se que qualquer inferência não baseada nesse suporte não é apropriada.
+  * como suporte **suficiente** entende-se que nada mais é necessário à inferência estatística além desse suporte.
+
+
+==== Suporte para Inferência sobre Parâmetros ====
+
+Partindo de um modelo assumido como apropriado, qualquer inferência sobre os parâmetros do modelo, ou //funções desses parâmetros//((propriedade da invariância dos MLES, [[03-funcao-veros:03-funcao-veros#invarianciaveja|tutorial 3]])) pode ser realizada tendo a função de log-verossimilhança negativa como suporte.
+
+Voltemos ao exemplo da distribuição de DAP no caxetal (parcela 2):
+<code rsplus>
+hist( cax3p$dap[ cax3p$parcela==2 ], prob = TRUE )
+curve(dweibull(x, shape=weib2$estimate["shape"], scale=weib2$estimate["scale"]), 40, 400, col="red", add=TRUE)
+</code>
+
+
+== Inferência sobre os Parâmetros ==
+
+
+Vejamos a superfície de log-verossimilhança negativa relativa para inferência sobre os parâmetros:
+
+  * Criando a função vetorizada:
+<code rsplus>
+lweibull = function(forma, escala) -sum(dweibull( cax3p$dap[ cax3p$parcela==2 ]-47, shape=forma, scale=escala, log=TRUE))
+vlweibull = Vectorize( lweibull, c("forma","escala") )
+</code>
+
+  * Definido a amplitude de variação dos parâmetros:
+<code rsplus>
+forma = seq(0.5, 2.5, by=0.05)
+escala = seq( 50, 100, by=0.5 )
+</code>
+
+  * Calculando a superfície de log-veros. neg. relativa:
+<code rsplus>
+sup.weibull = outer( forma, escala, vlweibull )
+sup.weibull = sup.weibull - min(sup.weibull)
+</code>
+
+  * Construindo o gráfico de contorno da superfície:
+<code rsplus>
+contour(forma, escala, sup.weibull, xlab="Forma", ylab="Escala", col="purple", levels=c(5,10,20,40,80,120))
+</code>
+
+  * Marcando a posição das MLE com linhas tracejadas:
+<code rsplus>
+abline(v=weib2$estimate[1], col="red", lty=2)
+abline(h=weib2$estimate[2], col="red", lty=2)
+</code>
+
+  * Marcando a região referente à razão de verossimilhança de 8:
+<code rsplus>
+contour(forma, escala, sup.weibull, levels=log(8), labels="log(8)", add=T, col="darkgreen" )
+</code>
+
+
+== Inferência sobre a Média ==
+
+Na distribuição Weibull a média (valor esperado) é definido em função dos parâmetros da seguinte forma:
+$$ \mu = \beta \  \Gamma\left(  \frac{\gamma + 1}{\gamma} \right)$$.
+onde:
+  * $\beta$ é o parâmetro de escala;
+  * $\gamma$ é o parâmetro da forma; e
+  * $\Gamma(\cdot)$ é a função gama.
+
+Assim podemos construir uma superfície para inferência sobre a Média:
+
+  * Cálculo da superfície dos valores da média:
+<code rsplus>
+mean.weibull = function(c, b) (b*gamma( (c+1)/c )+47)/10
+sup.mean = outer(forma, escala, mean.weibull)
+</code>
+
+  * Gráfico da superfície da média, com a posição das MLE dos parâmetros:
+<code rsplus>
+contour(forma, escala, sup.mean, col="darkgreen", xlab="Forma", ylab="Escala",levels=seq(8,18,by=1))
+abline(v=weib2$estimate[1], col="red", lty=2)
+abline(h=weib2$estimate[2], col="red", lty=2)
+</code>
+
+  * Região de razão de verossimilhança (8) e linha da média amostral:
+<code rsplus>
+contour(forma, escala, sup.weibull, levels=log(8), labels="log(8)", add=T, col="orange" )
+media.estimada = (weib2$estimate[2] * gamma(1 + (1/weib2$estimate[1])) + 47)/10
+contour(forma, escala, sup.mean, levels=media.estimada, col="red", add=T)
+contour(forma, escala, sup.mean, levels=mean(dap)/10, col="blue", add=T)
+</code>
+
+
+== Inferência sobre Quantis da Distribuição ==
+
+Na distribuição Weibull os quantis podem ser determinados a partir da função inversa da função de distribuição:
+$$d_p = \beta\ \left( \log \frac{ 1}{1-p}  \right)^{1/\gamma}$$,
+onde:
+  * $p$ é a probabilidade que se deseja o quantil, por exemplo 0.95 (95%);
+  * $\beta$ e $\gamma$ parâmetros de escala e forma, respectivamente.
+
+Para construir a superfície para inferência sobre o quantil 95% basta seguir os mesmos passos da construção da superfície sobre a média:
+<code rsplus>
+dap95.weibull = function(c, b) (b*( log(1/(1-0.95)) )^(1/c) + 47)/10
+sup.dap95 = outer(forma, escala, dap95.weibull)
+contour(forma, escala, sup.dap95, col="darkseagreen", levels=c(seq(15,25,by=1),seq(30,60,by=10)))
+abline(v=weib2$estimate[1], col="red", lty=2)
+abline(h=weib2$estimate[2], col="red", lty=2)
+contour(forma, escala, sup.weibull, levels=log(8), labels="log(8)", add=T, col="orange" )
+dap95.est = dap95.weibull( weib2$estimate[1], weib2$estimate[2])
+contour(forma, escala, sup.dap95, levels=dap95.est, labels=round(dap95.est,1), add=T, col="red" )
+dap95.amostral = quantile(cax3p$dap[ cax3p$parcela==2 ]/10, 0.95, type=6)
+contour(forma, escala, sup.dap95, levels=dap95.amostral, labels=round(dap95.amostral,1), add=T, col="blue" )
+</code>
+
+
+
+
+== Questões ==
+
+  * O que representa a superfície de log-verossimilhança negativa relativa dos parâmetros?
+  * O que se pode inferir (estatisticamente) a partir dela?
+  * O que representa a superfície de valores da média a partir dos parâmetros?
+  * O que se pode inferir (estatisticamente) dessa superfície?
+  * O que representa a superfície de valores do quantil 95% a partir dos parâmetros?
+  * O que se pode inferir (estatisticamente) dessa superfície?
+
+==== Suporte  para Inferência sobre Modelos ====
+
+A inferência sobre modelos consiste na comparação dos modelos dois-a-dois através da razão de verossimilhança.  
+
+É comum se utilizar o "//Akaike Information Criterion//" (AIC) como forma de comparação de modelos, sendo que além de considerar a verossimilhança do modelo ele penaliza o número de parâmetros no modelo.
+
+Elementos que tornam essa abordagem mais simples para inferência sobre modelos quando comparada à abordagem "//frequentista//"  ou "//bayesiana//" são:
+   * Não há restrições a respeito do número de modelos ou como eles são formulados (com ou sem inspeção dos dados).
+   * A log-verossimilhança é //aditiva//, portanto, os modelos podem ser comparados para a amostra como um todo ou para sub-conjuntos dessa.
+   * Para comparação entre modelos é irrelevante quais (ou quantas) variáveis foram utilizadas como variáveis preditoras/explicativas ou como elas são incorporadas ao modelo.
+
+
+=== Comparando Modelos nos Dados Sub-divididos ou Agregados ===
+
+Voltemos ao exemplo das 3 parcelas em caxetais.  Foram ajustados as distribuições Weibull e gama **para cada uma das parcelas**.  Assim, podemos usar o AIC para uma comparação **parcela-a-parcela**
+<code rsplus>
+library(bbmle)
+AICtab(weib1, gamm1, base=TRUE, logLik=TRUE)
+AICtab(weib2, gamm2, base=TRUE, logLik=TRUE)
+AICtab(weib3, gamm3, base=TRUE, logLik=TRUE)
+</code>
+
+Podemos pensar no conjunto dos três ajustes como um só modelo para as três parcelas, com seis parâmetros. Como a log-verossimilhança é aditiva, o AIC para este modelo combinado é a soma do AICs dos modelos componentes:
+<code rsplus>
+AIC(weib1) + AIC(weib2) + AIC(weib3)
+AIC(gamm1) + AIC(gamm2) + AIC(gamm3)
+</code>
+
+Um modelo mais parcimonioso para as três parcelas seria ajustar um só modelo para os **dados agregados**.
+<code rsplus>
+weib.agr = fitdistr( cax3p$dap - 47, "weibull", start=list(shape=1, scale=10) )
+gamm.agr = fitdistr( cax3p$dap - 47, "gamma", start=list(shape=1, scale=10) )
+AICtab(weib.agr, gamm.agr, base=TRUE, logLik=TRUE)
+AIC(weib1) + AIC(weib2) + AIC(weib3)
+AIC(gamm1) + AIC(gamm2) + AIC(gamm3)
+</code>
+
+
+**Questões:**
+   * Quais as diferenças na comparação dos modelos nos níveis:
+       - parcela-a-parcela,
+       - combinado,
+       - agregado?
+   * A fundamentação teórica muda ao se realizar comparações nos diferentes níveis?
+   * Com os resultados obtidos é possível testar se a melhor abordagem de modelagem é ter um modelo para cada parcela ou ter um modelo para os dados agregados?  Como?
+
+===== Inferência por Verossimilhança e Inferência Frequentista =====
+
+
+==== Inferência de Intervalo ====
+
+Na abordagem //frequentista// a inferência de intervalo é realizada através do **Intervalo de Confiança**.
+
+O intervalo de confiança apela para o conceito de probabilidade **a longo prazo** que implica na repetição
+ilimitada do procedimento utilizado para gerar os dados, como se os dados fossem uma amostra de uma população **infinita** de observações possíveis.  Dessa forma a construção do intervalo de confiança segue os seguintes passos:
+  - definir o **parâmetro de interesse**,
+  - encontrar uma **estatística** que pode ser um estimador do parâmetro ou uma transformação do estimador; 
+  - definir a **distribuição amostral** dessa estatística, isto é, qual seria a distribuição da estatística se fosse possível repetir a amostra infinitas vezes;
+  - construir um intervalo para a estatística com base nessa distribuição amostral;
+  - converter esse intervalo de volta à escala do parâmetro de interesse.
+
+=== Exemplo de Árvores Doentes em Floresta Plantada ===
+
+Considere que numa plantação de //Eucalyptus grandis// foram amostradas aleatoriamente 100 árvores, sendo que dessas 37 se mostraram infectadas por uma certa doença.  O objetivo é estimar a taxa de ocorrência da doença com estimativa de intervalo de confiança.
+
+Pela distribuição binomial a MLE da taxa de ocorrência é:
+
+$$ \hat{p} = \frac{37}{100} = 0.37$$.
+
+e o erro padrão dessa estimativa é:
+
+$$ \hat{\sigma} = [ \frac{p (1 - p)}{n} ]^{1/2} = [ \frac{ 0.37 (1 - 0.37) }{100} ]^{1/2} = 0.04828043$$.
+
+
+Utilizando a //aproximação normal// para grandes amostras ($n \geq 30$) sabemos que a estatística
+
+$$ \hat{z} = \frac{ \hat{p}  - p }{ \hat{\sigma}_p } $$
+
+tem distribuição amostral igual à distribuição Normal padronizada (média zero e desvio padrão um).
+
+Assim, um intervalo com probabilidade 95% para essa estatística é:
+
+$$ P( z_{0.025} \leq \hat{z} \leq z_{0.975} ) = 0.95 $$
+
+$$ P( -1.96 \leq \hat{z} \leq 1.96 ) = 0.95$$
+
+$$ P( -1.96 \leq \frac{ \hat{p} - p }{\hat{\sigma}} \leq 1.96 ) = 0.95 $$
+
+$$ P( \hat{p} -1.96 \hat{\sigma} \leq p \leq \hat{p} + 1.96 \hat{\sigma} ) = 0.95 $$
+
+Assim o intervalo de confiança de 95% para estimativa da taxa de ocorrência de doença $\hat{p}$ é:
+
+$$  \hat{p} \pm 1.96 \sigma  =  0.37 \pm (1.96) (0.04828043) = 0.37 \pm 0.09462964 $$.
+
+
+** Intervalo de Verossimilhança **
+
+O intervalo de verossimilhança (para razão 8, por exemplo) é obtido inspecionando a vizinhança da MLE $\hat{p}$ na curva de verossimilhança:
+<code rsplus>
+p = seq(0.20, 0.50, length=100)
+lik = dbinom(37, 100, p)
+lik = lik / max(lik)
+plot(p, lik, type="l", col="red")
+abline(h=1/8, lty=2, col="blue")
+abline(v=37/100, lty=9, col="red")
+</code>
+
+
+=== Segundo Exemplo de Árvores Doentes ===
+
+Suponha agora que a amostra aleatória de árvores de 100 árvores foi obtida, mas nenhuma das árvores se mostrou doente.  Isso indica que a ocorrência de doença é rara e, consequentemente, a taxa de infestação é muito pequena, próxima de zero.
+
+Estimativa da taxa: $\hat{p} = 0 / 100 = 0$
+
+Erro padrão da estimativa: $\hat{\sigma} = [ (0 (1 - 0))/ 100 ]^{1/2} = 0$
+
+Como utilizar a aproximação normal nesse caso?  Não é possível obter um intervalo de confiança de 95% por essa abordagem.  Uma nova abordagem, com outra estatística e outra distribuição amostral, deverá ser concebida.
+
+
+O que muda no intervalo de verossimilhança? Absolutamente nada:
+<code rsplus>
+p = seq(0.0, 0.05, length=100)
+lik = dbinom(0, 100, p)
+lik = lik / max(lik)
+plot(p, lik, type="l", col="red")
+abline(h=1/8, lty=2, col="blue")
+abline(v=0, lty=9, col="red")
+</code>
+
+
+==== Teste de Hipótese ====
+
+A forma de teste de hipótese de uso mais geral na estatística frequentista é o o **teste de significância**.
+
+Essa abordagem consiste em enunciar duas hipóteses:
+   * Hipótese nula: que estabelece um valor específico para o parâmetro sendo testado.
+   * Hipótese alternativa: que deve ser //complementar// à hipótese nula.
+
+O teste de significância segue os seguintes passos:
+  * Define-se uma estatística e se deduz a distribuição amostral dessa estatística **sob a hipótese nula**, isto é, assumindo a hipótese nula como verdadeira.   
+  * Com esta distribuição calcula-se, então, o **valor-p** que é a probabilidade de se observar o valor observado da estatística **ou um valor mais extremo** sob a hipótese nula.   
+  * Compara-se o valor-p com o **nível de significância** previamente definido.  
+  * Se o valor-p for menor que o nível de significância, rejeita-se a hipótese nula em favor da hipótese alternativa.
+
+
+
+=== Exemplo dos Dois Laboratórios ===
+
+Voltemos ao exemplo da aplicação de um produto em cobaias para verificar a taxa de mortalidade com os dois laboratórios:
+  * __Laboratório 1:__ Aplicou o produto em 20 cobaias das quais 6 morreram.
+  * __Latoratório 2:__ Foi aplicando o produto em várias cobaias, com a determinação que quando a sexta morte ocorresse o experimento terminaria.  A vigésima cobaia a receber o produto foi a sexta a morrer.
+
+A questão agora é testar as seguintes hipóteses:
+  * Hipótese Nula:  $p = 0.5$.
+  * Hipótese Alternativa:  $p \leq 0.5$.
+
+Laboratório A: o modelo deste experimento é uma distribuição binomial. A probabilidade de obter seis **ou menos** mortes em 20 tentativas sob a hipótese de que $p=0.5$ é dada pela probabilidade acumulada da binomial:
+<code rsplus>
+pbinom(q=6, size=20, prob=0.5)
+</code>
+
+Laboratório B: o modelo do experimento é uma distribuição binomial negativa. A probabilidade de obter seis mortes em 20 **ou mais** tentativas é:
+<code rsplus>
+1 - pnbinom(q=14, size=6, prob=0.5)
+</code>
+
+**Conclusão:** Tomando-se o **nivel de significância de 5% (0.05)**, o   __laboratório A__ não rejeitaria a hipótese nula, mas o __laboratório B__ a rejeitaria.
+
+Mesmo nível de significância e mesmos dados, mas conclusões diferentes.
+
+Na inferência por verossimilhança, como vimos,  os dois laboratório tem exatamente a mesma curva de verossimilhança e, portanto, a evidência estatística também:
+<code rsplus>
+p = seq(0.01, 0.99, by=0.01)
+lik.binom = dbinom(6, 20, p)     # Lab 1: dist. Binomial
+lik.binom = lik.binom / max(lik.binom)
+lik.nbinom = dnbinom(14, 6, p)   # Lab 2: dist. Binomial Negativa
+lik.nbinom = lik.nbinom / max(lik.nbinom)
+plot(p, lik.binom, type="l", ylab="Verossimilhança Relativa", col="blue", lwd=8)
+lines(p, lik.nbinom, col="red", lwd=2)
+</code>
+
+Entretanto, não seria apropriado estabelecer as hipóteses na forma
+  * hipotese A: $p = 0.5$ contra 
+  * hipótese B: $p \leq 0.5$.
+
+Pois a hipótese A indica um ponto na curva enquanto que a hipótese B indica uma região.
+
+
+
+
+\\
+------------------
+\\
+
+====== Questões motivadoras para a dicussão ======
+
+  - Na inferência por verossimilhança o espaço amostral é irrelevante, uma vez que não se considera o que poderia se amostrar, mas sim o que foi amostrado. Quais as implicações dessa característica na definição do delineamento amostral? Seria diferente do delineamento amostral quando se usa Inferência Clássica?
+  - Na análise de dados usando a Lei da Verossimilhança não se compara uma determinada hipótese a uma hipótese nula, e sim comparam-se hipóteses entre si (podendo haver mais de duas). Podemos dizer esse tipo de análise depende mais fortemente da habilidade do pesquisador para formular hipóteses e criar modelos que explicarão melhor seus dados (já que as hipóteses não estão prontas, elas devem ser formuladas)? Seria a estatística frequentista mais adequada a pesquisadores menos experientes, menos hábeis a formularem modelos mais coerentes com a realidade? 
+  - O Princípio da Verossimilhança afirma que a função de verossimilhança contém toda informação que um conjunto de dados tem sobre um dado modelo.  Quais as vantagens de se realizar a inferência com base apenas na função de verossimilhança? Quais as desvantagens?
+
+
+====== Recursos para Estudo ======
+
+===== Leituras =====
+=== Principais ===
+  * Royall, R. M. (2007) The likelihood paradigm for statistical evidence. **In:**  The nature of scientific evidence (eds. ML Taper and SR Lele),  University  of Chicago Press, pp 119–152. 
+  * Lewin-Koh N., Taper, M. L. & Lele, S. R. (2004). A brief tour of statistical concepts. **In:**  The nature of scientific evidence (eds. ML Taper and SR Lele),  University  of Chicago Press, pp 3 -16. 
+=== Complementares ===
+  * Sober, E. 2008. Evidence and Evolution: the logic behind the science. Cambridge, Cambridge University Press. Cap.1.
+  * [[http://www.cimat.mx/reportes/enlinea/D-99-10.html|Likelihood]]: Uma palestra de A. W. F. Edwards.
+  * Berger, J.O. & Wolpert, R.L. 1984. [[http://projecteuclid.org/euclid.lnms/1215466210|The likelihood principle.]]Lecture Notes--IMS Monograph Series, Volume 6.
+
+== Sobre p-valor e testes de significância==
+
+  * Ioannidis, John P.A. Why most published research findings are false. [[http://www.plosmedicine.org/article/info%3Adoi%2F10.1371%2Fjournal.pmed.0020124|PLoS medicine, v. 2, n. 8, p. e124, 2005]].
+  * Forum sobre testes de significância x seleção de modelos: [[http://esajournals.onlinelibrary.wiley.com/hub/issue/10.1002/ecy.2014.95.issue-3/|Ecology 95: 609-667, 2014]].
+  * [[http://www.stat.columbia.edu/~gelman/research/unpublished/murtaugh2.pdf|The problem with p-values is how they're used]], Comentário de Andrew Gelman que não foi incluído no forum acima por que o periódico cobrou uma taxa do autor, depois de convidá-lo. ([[http://andrewgelman.com/2014/05/17/forum-ecology-p-values-model-selection/]]).
+  * Cohen, J. 1994. The Earth Is Round (p<. 05). Amer. Psychologist, 49, 997-1003.
+  * Wasserstein, R. L., & Lazar, N. A. (2016). The ASA's statement on p-values: context, process, and purpose. The American Statistician.[[http://amstat.tandfonline.com/doi/full/10.1080/00031305.2016.1154108#.V-_YHVmNPMI|doi: 10.1080/00031305.2016.1154108]]. Resumo das recomendações da American Statistical Society para uso de p-valores em uma abordagem frequentista. O material suplementar tem 23 artigos com diferentes pontos de vista sobre testes de significância e interpretação do valor p
+  * Nuzzo, R. (2014). Statistical errors. [[http://www.nature.com/news/scientific-method-statistical-errors-1.14700|Nature, 506(7487), 150-152]].
+===== Na Internet =====
+
+   * [[http://www.cimat.mx/reportes/enlinea/D-99-10.html|"Likelihood"]]: Uma palestra de A. W. F. Edwards 
+  * Berger, J.O. & Wolpert, R.L. 1984. [[http://projecteuclid.org/euclid.lnms/1215466210|The likelihood principle.]]Lecture Notes--IMS Monograph Series, Volume 6.
+  * Página do filósofo [[http://philosophy.wisc.edu/sober/index.html|Elliot Sober]], com vários artigos sobre a fundamentação lógica das diferentes abordagens estatísticas.
+  * Página do filósofo [[http://philosophy.wisc.edu/forster/|Malcom Foster]], especialista em epistemologia da ciências quantitativas, e que tem várias análises críticas do papel de ajuste de modelos nestas.
+
+
+
+

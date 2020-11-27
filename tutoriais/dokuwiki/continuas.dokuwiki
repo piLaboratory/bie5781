@@ -1,0 +1,658 @@
+====== 2. Distribuições Contínuas  ======
+ 
+Ao contrário de contagens, as medidas contínuas podem assumir qualquer valor dentro de um intervalo numérico.  São exemplos extensões, massa e tempo decorrido. Dizemos então que **uma variável é contínua se pode ter qualquer valor no conjunto de [[http://en.wikipedia.org/wiki/Real_number|números reais]], ou um subconjunto deles**. As variáveis contínuas necessitam de modelos de distribuição de probabilidade distintos das variáveis discretas.  
+
+Nesse tópico apresentamos esses modelos e exploramos suas propriedades básicas, com simulações dos cenários probabilísticos em computador. Também vamos verificar que a soma de muitas fontes de variação no limite cria a distribuição contínua mais conhecida, a Gaussiana.
+
+
+====== Conceitos ======
+
+  * Função de densidade probabilística
+  * Função de probabilidade acumulada
+  * Esperança e variância de variáveis contínuas
+  * Teorema Central do Limite
+  * Distribuições de probabilidade contínuas mais usadas em ecologia
+
+
+====== Tutoriais ======
+
+===== Função de Densidade e Probabilidade =====
+
+É importante ter clara a diferença entre a //__função de densidade de probabilidade__// de uma variável contínua e a //__probabilidade__// dessa variável assumir um valor dentro de um intervalo.
+
+A primeira não é uma probabilidade, e pode ter valores maiores do que um. No caso de uma variável normal, isto acontece quando o desvio-padrão é baixo. 
+
+A função **"[[http://finzi.psych.upenn.edu/R/library/stats/html/Normal.html|dnorm]]"** no R retorna o valor da função de densidade da normal para um dado valor da variável aleatória. Para uma normal com parâmetros $\mu=2$ e $\sigma=0,1$ os valores da função de densidade para $\mu \pm 1,5\sigma$ são:
+<code rsplus>
+> dnorm(2+c(-0.15,0.15),mean=2,sd=0.1)
+[1] 1.295176 1.295176
+</code>
+
+Aplicando a função **"[[http://finzi.psych.upenn.edu/R/library/graphics/html/curve.html|curve]]"** à função **"dnorm"** podemos traçar o gráfico da função dentro de um intervalo dado pelos argumentos **"from"** e **"to"**. Vamos fazer isto para a variável normal definida acima, no intervalo $\mu \pm 3\sigma$
+<code rsplus>
+curve(dnorm(x,mean=2,sd=0.1),from=1.7, to=2.3, 
+      xlab="x",ylab="densidade de probabilidade")
+</code>
+
+Vamos acrescentar neste gráfico os valores que calculamos acima:
+<code rsplus>
+points(2+c(-0.15,0.15),dnorm(2+c(-0.15,0.15),mean=2,sd=0.1),
+       col="red", pch=19, cex=1.5)
+segments(x0=c(2+c(-0.15,0.15,0.15)),
+         y0=c(0,0,dnorm(2.15,mean=2,sd=0.1)),
+         x1=c(2+c(-0.15,0.15),1.5),
+         y1=dnorm(2+c(-0.15,0.15,0.15),mean=2,sd=0.1),
+         col="red", lty=2)
+</code>
+
+Para uma variável aleatória a probabilidade só pode ser definida para //__um intervalo__//, e corresponde à área sob a curva que está delimitada por este intervalo. Vamos criar uma função no R para preencher esta área no gráfico da curva normal ((compreender o código desta função não é essencial, basta saber que ela preenche a área sob a normal)):
+<code rsplus>
+area.norm <- function(from,to,mean,sd,cor="red",shade=1e4,...){
+  len <- (to-from)*shade
+  x <- seq(from,to,length=len)
+  segments(x0=x,x1=x,y0=rep(0,len),y1=dnorm(x,mean=mean,sd=sd),col=cor)
+}
+</code>
+
+
+E agora aplicá-la para colorir de vermelho a área delimitada por $\mu \pm 1,5\sigma$ no gráfico que criamos:
+<code rsplus>
+     area.norm(1.85,2.15,mean=2,sd=0.1)
+</code>
+
+A área sob uma função é sua //__integral__//. Podemos calculá-la com a função de integração do R (([[http://finzi.psych.upenn.edu/R/library/stats/html/integrate.html|ajuda da **"integrate"**]] )):
+<code rsplus>
+     integrate(dnorm,lower=1.85, upper=2.15,mean=2,sd=0.1)
+</code>
+
+A integral de qualquer função de densidade probabilística no intervalo que contém todos os valores da variável aleatória é um. Verifique isto para a normal, integrando-a de //__menos infinito__// ($-\infty$) a //__mais infinito__// ($\infty$): 
+<code rsplus>
+integrate(dnorm,lower=-Inf, upper=Inf,mean=2,sd=0.1)
+integrate(dnorm,lower=Inf, upper=Inf) ## normal padronizada
+</code>
+
+A integral do limite inferior de uma função de densidade até um certo valor é a //__função de densidade acumulada__//. Para a normal, a função no R é **"pnorm"**. A área entre dois valores pode ser obtida subtraindo-se suas probabilidades acumuladas:
+
+<box centered 70% red|A probabilidade de um intervalo é a diferença de suas probabilidades acumuladas>
+{{:02-continuas:dif_normal.png}}
+</box>
+
+O que você obtém com o comando:
+<code rsplus>
+    pnorm(2.15,mean=2,sd=0.1)-pnorm(1.85,mean=2,sd=0.1)
+</code>
+
+A funções no R para calcular probabilidades acumuladas, como a **"pnorm"**, têm o argumento **"lower.tail"**, que permite calcular a probabilidade a partir de um ponto, isto é, da cauda posterior ao valor da variável (**"lower.tail=FALSE"**). Com isto, outra maneira de obter a probabilidade para o mesmo intervalo é:
+<code rsplus>
+    1-(pnorm(2.15,mean=2,sd=0.1,lower.tail=F)+pnorm(1.85,mean=2,sd=0.1))
+</code>
+
+Por fim, como o intervalo é simétrico em torno da média, e a curva normal também o é, uma terceira maneira de fazer o cálculo é:
+<code rsplus>
+    1-2*pnorm(1.85,mean=2,sd=0.1,lower.tail=TRUE)
+</code>
+
+==== Extras ====
+Se quiser reproduzir a figura deste tutorial, o código em R é
+<code rsplus>
+png("dif_normal.png",height=200,width=600)
+par(mfrow=c(1,3))
+curve(dnorm(x,mean=2,sd=0.1),from=1.7, to=2.3, 
+      xlab="",ylab="",axes="F")
+area.norm(1.7,2.15,mean=2,sd=0.1,cor="black")
+curve(dnorm(x,mean=2,sd=0.1),from=1.7, to=2.3, 
+      xlab="",ylab="",axes="F")
+area.norm(1.7,1.85,mean=2,sd=0.1,cor="black")
+curve(dnorm(x,mean=2,sd=0.1),from=1.7, to=2.3, 
+      xlab="",ylab="",axes="F")
+area.norm(1.85,2.15,mean=2,sd=0.1,cor="black")
+mtext(c("-","="),at=c(0.6,1.6),padj=1.1,cex=8)
+dev.off()
+</code>
+
+
+===== Esperança de uma Distribuição Contínua =====
+
+A esperança de uma variável aleatória contínua é 
+
+$$ E[X]\ = \ \int x \cdot f(x) \  dx $$
+
+Onde $f(x)$ é a função de densidade probabilística. 
+
+Vamos verificar isto numericamente para a variável exponencial, cuja média é o inverso de seu único parâmetro, $\lambda$. Começamos definindo uma função no R que é o produto da densidade pelo valor da variável aleatória:
+<code rsplus>
+esper.exp <- function(x,taxa){
+  dexp(x,rate=taxa)*x
+}
+</code>
+
+Agora usamos a função **"integrate"** para fazer a integração numérica desta função no suporte da exponencial (0 a infinito), para uma variável exponencial com $\lambda=0.1$:
+
+<code rsplus> integrate(esper.exp,0,Inf,taxa=1/10) </code>
+
+Compare o valor obtido com o valor teórico da esperança,  $ \lambda^{-1} $ .
+
+===== Histograma de Densidade =====
+
+Para comparar a distribuição de dados com alguma variável aleatória, podemos usar um histograma re-escalonado para densidade.
+
+Para exemplificar, usaremos os perímetros à altura do peito de fustes de caixeta amostradas  em um inventário florestal ({{:02-continuas:caixeta.csv}}).
+
+Primeiro criamos um objeto com os dados de interesse, que são os fustes da caixeta em Chauás:
+<code rsplus>
+caixeta <- read.csv2("caixeta.csv")
+chauas <- caixeta[caixeta$local=="chauas"
+                  &caixeta$especie=="Tabebuia cassinoides",]
+</code>
+
+E então criamos um fator para as classes de CAP, com intervalos de 100 mm:
+<code rsplus>
+chauas$cap.class <- cut(chauas$cap,breaks=seq(100,800,by=100))
+</code>
+
+Um gráfico da tabulação deste fator é um histograma de frequências:
+<code rsplus>
+barplot(table(chauas$cap.class),space=0)
+</code>
+
+Dividindo-se os valores pelo total de fustes temos um histograma de frequências relativas:
+<code rsplus>
+barplot(table(chauas$cap.class)/length(chauas$cap.class))
+</code>
+
+Finalmente, dividindo novamente estes valores pelas amplitude do intervalo de classe usado (100 mm) temos um histograma de densidade:
+<code rsplus>
+barplot(table(chauas$cap.class)/(length(chauas$cap.class)*100),
+        space=0)
+</code>
+
+Neste histograma, a soma das áreas das barras é um. A função **"[[http://finzi.psych.upenn.edu/R/library/graphics/html/hist.html|hist]]"** tem um argumento **"prob"** que converte a escala para densidade:
+<code rsplus>
+hist(chauas$cap,breaks=8,prob=T,
+     xlab="CAP (cm)",ylab="Densidade")
+</code>
+
+Nesta escala podemo sobrepor funções de densidade, como a Gaussiana:
+<code rsplus> curve(dnorm(x,mean=mean(chauas$cap),
+      sd=sd(chauas$cap)),add=T,col="blue") </code>
+
+
+===== Distribuição Normal (Gaussiana) =====
+
+As companhias aéreas norte-americanas garantem que 98% de seus passageiros não terão problemas para se acomodar nos assentos da classe econômica. Para isso, usam um modelo que descreve a distribuição das larguras dos quadris dos homens norte-americanos como uma variável normal, com média de 14,4 polegadas, e desvio-padrão de 1,0 polegada.
+
+Faça um gráfico desta distribuição de probabilidades:
+<code rsplus>
+curve(dnorm(x,mean=14.4,sd=1),from=8, to=20, 
+      xlab="Largura (in)",ylab="densidade de probabilidade")
+</code>
+
+Para definir a largura do assento, é preciso saber o limite superior do intervalo que contêm 98% da população. Esse é o quantil de 98% da distribuição, no caso uma normal com média de 14,4  e desvio-padrão de 1,0 polegadas.
+
+Calcule o valor deste quantil com o comando: 
+<code rsplus>
+(larg <- qnorm(mean=14.4,sd=1,p=0.98))
+</code>
+
+Este é o valor que delimita 98% da área sob a curva normal. Usando a função criada no tutorial anterior podemos visualizar no gráfico a área que vai até o quantil calculado acima:
+
+<code rsplus>
+area.norm(8,larg,mean=14.4,sd=1)
+</code>
+
+
+===== Variando os Parâmetros da Normal =====
+
+Imagine que o desvio-padrão para o exemplo dos quadris norte-americanos seja 50% maior. O que deve ocorrer com o quantil de 98%? Verifique sua expectativa com o comando:
+<code rsplus>
+qnorm(mean=14.4,sd=1.5,p=0.98)
+</code>
+
+Repita o gráfico do tutorial anterior, e adicione ao gráfico a distribuição de probabilidades com o novo valor do parâmetro desvio-padrão:
+<code rsplus>
+curve(dnorm(x,mean=14.4,sd=1),from=8, to=20, 
+      xlab="Largura (in)",ylab="densidade de probabilidade")
+curve(dnorm(x,mean=14.4,sd=1.5), add=T, col="blue")
+</code>
+
+Os parâmetros da distribuição normal correspondem à média e ao desvio-padrão. Explore o comportamento da curva com a mudança de seus parâmetros:
+
+<code rsplus>
+cores <- rainbow(n=4)
+curve(dnorm(x),from=-8,to=8, col=cores[1])
+curve(dnorm(x,sd=2), col=cores[2], add=T)
+curve(dnorm(x,mean=2), col=cores[3], add=T)
+curve(dnorm(x,mean=2,sd=2), col=cores[4], add=T)
+legend(-7.5,0.3,legend=c("média=0,sd=1","média=0,sd=2",
+                         "média=2,sd=1","média=2,sd=2"),lty=1,col=cores)
+</code>
+
+
+===== Teorema Central do Limite =====
+
+O Teorema Central do Limite (TCL) prova que as médias de amostras independentes tomadas de uma mesma distribuição tendem para uma distribuição normal. A média desta normal é a mesma da distribuição de onde vieram as amostras, e a variância é igual à variância da distribuição original, dividida pelo tamanho das amostras. 
+
+Verifique isto com o seguinte tutorial:
+
+Sorteie dez mil números de uma distribuição muito diferente de uma normal, como uma Poisson com média baixa:
+<code rsplus>
+vals <- rpois(10000,lambda=0.5)
+</code>
+
+Agora imagine que estes valores foram obtidos de mil amostras independentes, cada uma de tamanho dez. Vamos criar um fator que rotule as amostras de um a mil:
+<code rsplus>
+cod.amostras <- factor(rep(1:1000,each=10))
+</code>
+
+Agora podemos calcular a média de cada uma dessas amostras:
+
+<code rsplus>
+medias.vals <- tapply(vals,cod.amostras,mean)
+</code>
+
+E fazer um histograma dessas mil médias:
+
+<code rsplus>
+hist(medias.vals,prob=T)
+</code>
+
+E sobrepor a função de densidade da normal, com os parâmetros previstos pelo TCL: 
+
+<code rsplus>
+curve(dnorm(x,mean=0.5,sd=sqrt(0.5/10)),add=T,col="blue")
+</code>
+
+Uma outra ótima maneira de avaliar a normalidade é com o gráfico de quantis normais ((Para saber mais sobre gráficos quantil-quantil veja este [[https://www.youtube.com/watch?v=okjYjClSjOg|video]], ou o [[https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot|verbete da Wikipedia]] para uma descrição mais detalhada.)):
+
+<code rsplus>
+qqnorm(medias.vals)
+qqline(medias.vals)
+</code>
+
+Repita os procedimentos, com mil amostras de tamanho 50. Quais suas conclusões?
+
+
+===== Distribuição Bernoulli Tendendo à Normal? =====
+
+Uma maneira simples de formular o Teorema Central do Limite é que a soma ou a média de muitas variáveis aleatórias tende a uma variável normal. Esta tendência é válida mesmo para variáveis com distribuições muito diferentes da normal e que não tenham os mesmos parâmetros.
+
+Neste tutorial investigaremos se o TCL pode nos ajudar a propor um modelo para a riqueza de espécies em um conjunto de áreas. Vamos simular um cenário em que a ocorrência de cada espécie é uma variável Bernoulli (**1** = presente, **0** = ausente), cujo único parâmetro (**p** a probabilidade de ocorrência) varia entre espécies.
+
+Vamos assumir que as probabilidades de ocorrência também são variáveis aleatórias. Uma escolha natural é a [[https://en.wikipedia.org/wiki/Beta_distribution|variável Beta]], que está restrita a valores entre zero e um, e cuja distribuição é muito flexível.
+
+<box centered 90% red|Função de densidade da distribuição beta usada para representar as probabilidades de ocorrência das espécies. Os parâmetros usados são **a=1** e **b=5**.>
+{{:02-continuas:beta.png}}  
+</box>
+
+
+Para simular uma metacomunidade com 300 espécies, sorteamos 300 valores da distribuição beta representada acima:
+
+<code rsplus>
+p.oc <- rbeta(300, shape1=1,shape2=5)
+</code>
+
+Em seguida criamos uma função que faz **N** experimentos de Bernoulli, tomando um valor **1** com probabilidade $p$ e valor $0$ com probabilidade **1-p**
+
+<code rsplus>
+ocorre <- function(p,N) { sample( c(0,1), size=N, replace=T, prob=c(1-p,p)) }
+</code>
+
+Aplicando esta função às probabilidades de ocorrência sorteadas no passo anterior, obtemos uma matriz com **100** linhas (locais) e **300** colunas (espécies):
+<code rsplus>
+matriz <- sapply(p.oc, ocorre, N=100)
+</code>
+
+A soma de cada linhas é o número de espécies em cada um dos **100** locais
+<code rsplus>
+riquezas <- apply(matriz, 1, sum)
+</code>
+
+Cuja distribuição pode ser comparada com função de densidade de uma normal de mesma média e desvio-padrão:
+
+<code rsplus>
+hist(riquezas,prob=T,xlab="N de espécies",
+     ylab="Densidade de Probabilidade")
+curve(dnorm(x,mean=mean(riquezas),sd=sd(riquezas)),
+      add=T,col="blue")
+</code>
+
+Avalie também o ajuste a uma normal com o gráfico de quantis teóricos:
+
+<code rsplus>
+qqnorm(riquezas)
+qqline(riquezas)
+</code>
+
+==== Extras ====
+Se quiser reproduzir o gráfico da variável beta deste tutorial o comando é:
+<code rsplus>
+curve(dbeta(x,shape1=1,shape2=5),0,1,
+      xlab="x",ylab="Densidade de Probabilidade")
+</code>
+
+
+===== Distribuição Exponencial =====
+
+A variável exponencial é a análoga contínua da variável geométrica. Ela pode ser usada para descrever o tempo de espera até a primeira ocorrência de um evento, dado que ele tem uma taxa de ocorrência $\lambda$ constante.
+
+Vamos simular esta situação, imaginando que você acompanha um animal por até duas horas((a rigor deveríamos esperar até a primeira ocorrência. Fixando o tempo máximo de observação temos uma [[http://en.wikipedia.org/wiki/Censoring_%28statistics%29|medida censurada]], pois o procedimento não registra a ocorrência após 120 minutos. Mas como a probabilidade de que não haja ocorrências em 120 minutos é baixa na simulação (da ordem de 6 em um milhão), a simulação deve ser uma boa aproximação da exponencial não-censurada.)), sempre no mesmo horário. Sua variável de interesse é o tempo até que ele apresente um certo comportamento pela primeira vez. A taxa média com que este comportamento ocorre neste horário é de 0,1/minuto.
+
+A distribuição desta variável aleatória pode ser simulada repetindo o estudo muitas vezes. A cada uma delas haverá um certo número de comportamentos, com uma média de $0.1 \times 120 = 12$ vezes. Supondo que estes eventos estão distribuídos aleatoriamente entre os dias, o número de eventos a cada dia de observação será uma variável Poisson. Para simular 10.000 repetições, sorteamos esta quantidade de valores de uma Poisson com taxa de ocorrência por dia de doze no período de observação :
+<code rsplus>
+n <- rpois(10000,12)
+</code>
+
+O total de eventos será então a soma destes valores sorteados. Em seguida sorteamos este número de valores de uma distribuição uniforme, com o mínimo de 0 e máximo de 120. Estes serão os horários de ocorrência de cada evento, em cada repetição do estudo ((Como cada evento é independente dos demais e a taxa de ocorrência instantânea é constante, todos os horários são equiprováveis, o que representamos com um sorteio de uma uniforme)).
+
+<code rsplus>
+vals <- runif(sum(n),0,120)
+</code>
+
+E criamos um fator para identificar cada repetição do estudo, ou seja, cada dia de observação:
+<code rsplus>
+cod.amostras <- factor(rep(1:10000,n))
+</code>
+
+Até aqui temos um vetor com tempo transcorrido até cada um dos eventos que ocorreram em cada dia de observação. Com isto, podemos usar a função **"[[http://finzi.psych.upenn.edu/R/library/base/html/tapply.html|tapply]]"** para identificar o menor valor de cada repetição, que é o tempo da primeira ocorrância do evento em cada dia:
+<code rsplus>
+primeiro <- tapply(vals,cod.amostras,min)
+</code>
+
+E agora construímos um histograma de densidade desta variável, e sobrepomos a função de densidade da variável exponencial:
+<code rsplus>
+hist(primeiro,prob=T,  xlab="Tempo de Espera (min)", 
+     ylab="Densidade Probabilística")
+curve(dexp(x,rate=12/120),add=T,col="blue")
+</code>
+
+Avalie visualmente a concordância com o modelo teórico.
+
+
+===== Distribuição Gama =====
+
+A variável Gama foi criada como uma extensão da exponencial, para descrever o tempo de espera até que um certo número de eventos ocorram, dada uma taxa constante de ocorrência. Devido à sua flexibilidade, posteriormente foi adotada como modelo heurístico para descrever variáveis com distribuições de probabilidade assimétricas.
+
+Usando a simulação do tutorial anterior, podemos obter os tempos de espera até que o animal apresente o comportamento de interesse pela segunda vez. Para isto, criamos uma função que retorna o n-ésimo menor valor de um vetor de números
+
+<code rsplus>
+enesimo <- function(x,n)sort(x)[n]
+</code>
+
+E aplicamos esta função a cada repetição do estudo, guardada no vetor ''cod.amostras'', do tutorial anterior:
+
+<code rsplus>
+segundo <- tapply(vals,cod.amostras,enesimo,n=2)
+</code>
+
+Para então fazer um histograma de densidade com estes dados
+
+<code rsplus>
+hist(segundo,prob=T, xlab="Tempo de Espera (min)", 
+     ylab="Densidade Probabilística")
+</code>
+
+Podemos então sobrepor a este histograma a curva da função de densidade probabilística da variável Gama, com os parâmetros teóricos de taxa de ocorrência (**"rate"**) e número de eventos a esperar (**"shape"**):
+
+<code rsplus> 
+curve(dgamma(x,rate=12/120,shape=2),add=T,col="blue")
+</code>
+
+=====Distribuição Weibull e memória=====
+
+A distribuição Weibull também é usada para descrever tempo contínuo de espera até que um evento aconteça. O seu parâmetro de forma determina como a taxa instantânea de mortalidade muda com o tempo decorrido. Se isso acontece, dizemos que a distribuição descreve um processo com [[http://en.wikipedia.org/wiki/Memorylessness|memória]]. Para entender esta propriedade, vamos primeiro verificar que ela não existe na distribuição exponencial.
+
+===Uma distribuição sem memória===
+
+Suponha um processo de mortalidade em tempo contínuo, a uma taxa constante((esta é uma taxa de ocorrência instantânea por tempo, por isso sua unidade é 1/tempo)) de $\lambda = 0.5 \; \text{ano}^{-1}$. Neste caso o tempo de vida segue uma distribuição exponencial. Por exemplo, a probabilidade de sobreviver um ano ou mais é dada pela função de probabilidade acumulada da exponencial a partir de um ano até infinito:
+
+$$P(t\geq1) = \int_1^\infty \lambda e^{- t \lambda} = e^{-\lambda}$$
+
+Que obtemos no R com a função de densidade acumulada ((use o parâmetro ''lower.tail=TRUE'' para a probabilidade acumulada a partir do quantil de 1)): 
+
+<code rsplus>
+(p1 <- pexp(1, rate=.5,lower.tail=FALSE))
+</code>
+
+Qual a probablilidade que esta distribuição atribui a sobreviver um ano e meio ou mais?
+
+<code rsplus>
+(p1.5 <- pexp(1.5, rate=.5,lower.tail=FALSE))
+</code>
+
+Com estes dois valores podemos calcular a probabilidade de sobrevivência por um ano e meio ou mais, dado que sobreviveu-se até um ano. Esta é uma probabilidade condicional:
+
+$$P(t\geq1.5 \,| \,t\geq1)$$
+
+Que obtemos divindo a condicionada pela condicionante:
+
+<code rsplus>
+p1.5/p1
+</code>
+
+Compare este valor com a probabilidade de viver meio ano ou mais:
+
+<code rsplus>
+pexp(.5, rate=.5, lower=FALSE)
+</code>
+
+Os dois valores são idênticos! Isso quer mostra que a exponencial não tem memória: a probabilidade de viver por um tempo adicional $\Delta$ não é afetada pelo tempo já vivido. Em linguagem matemática:
+
+$$P(t\geq x + \Delta\,| \,t\geq x) \ = \ P(t\geq \Delta)$$
+
+===Memória na Weibull===
+
+O parâmetro de forma da distribuição Weibull define o tipo de memória que ela pode descrever. Se o parâmetro é igual a um, a Weibull reduz-se a uma exponencial e portanto não tem memória. Verifique com((neste tutorial fixamos o valor do parâmetro de escala porque não afeta os resultados que nos interessam)):
+
+<code rsplus>
+## Probabilidade de viver mais de 1 ano
+(pw1 <- pweibull(1, shape=1, scale=2, lower=FALSE))
+## P de viver mais de 1 ano e meio
+(pw1.5<- pweibull(1+ 0.5, shape=1, scale=2, lower=FALSE))
+## Probabilidade de viver mais meio ano, dado que viveu um
+pw1.5/pw1
+## Probabilidade de viver meio ano no inicio da vida
+pweibull(0.5, shape=1, scale=2, lower=FALSE)
+</code>
+
+Quando o parâmetro de forma é maior que um cria-se um efeito de memória que pode ser interpretada como envelhecimento: 
+
+<code rsplus>
+(pw1 <- pweibull(1, shape=1.5, scale=2, lower=FALSE))
+(pw1.5<- pweibull(1+ 0.5, shape=1.5, scale=2, lower=FALSE))
+pw1.5/pw1
+pweibull(0.5, shape=1.5, scale=2, lower=FALSE)
+</code>
+
+Quando o parâmetro de forma é menor do que um temos uma memória que pode descrever mortalidade mais intensa de jovens:
+
+<code rsplus>
+(pw1 <- pweibull(1, shape=0.2, scale=2, lower=FALSE))
+(pw1.5<- pweibull(1+ 0.5, shape=0.2, scale=2, lower=FALSE))
+pw1.5/pw1
+pweibull(0.5, shape=0.2, scale=2, lower=FALSE)
+</code>
+
+===Função de risco===
+
+A [[https://en.wikipedia.org/wiki/Failure_rate#Failure_rate_in_the_continuous_sense|função de risco]], ou taxa de falha, é outra maneira de descrever o tipo de memória de distribuições de tempo. A função de risco  é a razão entre a densidade de probabilidade em um tempo e a probabilidade acumulada a partir daquele tempo:
+
+$$h(t) \ = \ \frac{f(t)}{1-F(t)}$$
+
+Esta função expressa como o risco de morte ou falha muda com o tempo já decorrido, ou idade. Vamos fazer um gráfico das funções de risco das três distribuições Weibull usadas acima:
+
+<code rsplus>
+## Funcao de risco
+hweib <- function(x, shape, scale){
+    dweibull(x, shape, scale)/
+        pweibull(x,shape, scale, lower=FALSE)
+}
+## Grafico
+curve(hweib(x, shape=1.5, scale=2),0,3, xlab="Tempo decorrido",
+      ylab="Função de risco", col="red")
+curve(hweib(x, shape=0.2, scale=2), add=T, col="blue")
+curve(hweib(x, shape=1, scale=2), add=T)
+legend(x=2.5, y=0.3, c("a > 1", "a < 1", "a = 1"),
+       lty=1, col=c("red", "blue", "black"), bty="n")
+</code>
+
+
+===== Distribuição Log-Normal =====
+
+Assim como a variável normal descreve a soma ou média de muitas variáveis aleatórias, a variável log-normal descreve a //__multiplicação__// de variáveis aleatórias.
+
+O exemplo mais conhecido de processo multiplicativo em ecologia é o modelo de crescimento populacional geométrico estocástico. 
+
+Neste modelo, o tamanho da população no tempo **t+1** é o produto do tamanho da população no tempo anterior, **t**, multiplicado pela taxa de crescimento populacional **R**:
+
+$$     N_{t+1} \ = \ R \cdot N_t $$
+
+
+Se **R** varia ao longo do tempo, podemos descrevê-la como uma variável aleatória. Portanto, o tamanho da população será o resultado da multiplicação de muitas realizações de uma variável aleatória. Neste cenário, as abundâncias de um conjunto de espécies com dinâmicas populacionais independentes seguirão uma distribuição log-normal.
+
+Para simular esta situação, criamos uma função que reitera a equação de crescimento de uma população **time** vezes, e repete este procedimento para **N** populações de tamanho inicial **N0**, sendo o valor de **R** uma variável uniforme, com valores entre **Rmin** e **Rmax**:
+
+<code rsplus>
+pops <- function(N,N0,Rmin,Rmax,time){
+  results <- matrix(nrow=N,ncol=time)
+  results[,1] <- N0
+  for(i in 1:N){
+    for(z in 2:time){
+      results[i,z] <- results[i,z-1]*runif(1,Rmin,Rmax)
+    }
+  }
+  results
+}
+</code>
+
+O resultado desta função é uma matriz com **N** linhas (espécies) e **time** colunas (os intervalos de tempo). Com ela, simulamos a dinâmica populacional de 200 espécies por 20 intervalos de tempo, com valor médio do **R=1**, e atribuímos o resultado a um objeto:
+
+<code rsplus>
+abunds <- pops(200,500,Rmin=0.8,Rmax=1.2,time=20)
+</code>
+
+Com isto podemos fazer o histograma de densidade das abundâncias das 200 espécies no último intervalo de tempo:
+
+<code rsplus>
+h1<-(hist(abunds[,ncol(abunds)], prob=T))
+</code>
+
+E sobrepor a curva da função de densidade da log-normal, com os parâmetros estimados da amostra de 200 populações:
+
+<code rsplus>
+curve(dlnorm(x,meanlog=mean(log(abunds[,ncol(abunds)])),
+                 sdlog=sd(log(abunds[,ncol(abunds)]))),
+                        add=T, col="blue")
+</code>
+
+Se a log-normal é um bom modelo para descrever as abundâncias, seus logaritmos devem seguir uma distribuição normal. Podemos verificar isto visualmente com um gráfico de quantil:
+
+<code rsplus>
+qqnorm(log(abunds[,ncol(abunds)]))
+qqline(log(abunds[,ncol(abunds)]))
+</code>
+
+==Extra==
+Um gráfico que pode ajudar a entender a simulação:
+<code rsplus>
+nf <- layout(matrix(c(1,2),1,2,byrow=TRUE), c(3,1), TRUE)
+par(mar=c(5,4,4,0))
+matplot(t(abunds), col=1, lwd=0.5, lty=1, type="l",
+        xlab= "Tempo",ylab="N de indivíduos", bty="l", ylim=range(h1$breaks))
+par(mar=c(5,0,4,2))
+barplot(h1$counts, horiz=T, axes=F, space=0)
+</code>
+
+\\
+----------------
+\\
+
+
+====== Distribuições Contínuas mais Usadas ======
+
+
+
+^  Distribuição  ^  Parâmetros  ^  Parâmetros no R  ^  Função no R  [dpqr]  ^  Suporte  ^  Assimetria  ^  Esperança  ^  Variância  ^
+| [[http://en.wikipedia.org/wiki/Uniform_distribution_(continuous)|Uniforme]]  | $(a,b)$  | ''min'',  \\ ''max''  |  ''unif''  | $[a,b]$  |  Simétrica  | $\frac{a+b}{2}$  | $\frac{(b-a)^2}{12}$  |
+| [[http://en.wikipedia.org/wiki/Exponential_distribution|Exponencial]]  | $\lambda$  |''rate''  |  ''exp''  | $[0, \infty)$  |  Direita  | $\lambda^{-1}$  | $\lambda^{-2}$  |
+| [[http://en.wikipedia.org/wiki/Gamma_distribution|Gama]]  | $(b,c)$ ou \\ $(\lambda,c)$  |''scale'', ''shape'' \\ **ou** \\ ''rate'', ''shape''  |  ''gamma''  | $[0, \infty)$  |  Direita  | $bc = \frac{c}{\lambda}$  | $b^2c = \frac{c}{\lambda^2}$  |
+| [[http://en.wikipedia.org/wiki/Weibull_distribution|Weibull]]  | $(b,c)$  |''scale", \\ "shape''  |  ''weibull''  | $[0, \infty)$  |  Direita, Simétrica  | $b\Gamma(1 + \frac{1}{c})$  | $b^2\Gamma(1 + \frac{2}{c})-\\-(b\Gamma(1 + \frac{1}{c}))^2$  |
+| [[http://en.wikipedia.org/wiki/Beta_distribution|Beta]]   | $a, b$  |''shape1'' , \\ ''shape2''  |  ''beta''  | $[0,1]$  |  Direita, Esquerda, Simétrica  | $\frac{a}{a+b}$  | $\frac{ab}{(a+b)^2 (a+b+1)}$  |
+| [[http://en.wikipedia.org/wiki/Normal_distribution|Normal (Gaussiana)]]  | $\mu,\sigma$  |''mean'', \\ ''sd''  |  ''norm''  | $(-\infty,\infty)$  |  Simétrica  | $\mu$  | $\sigma^2$  |
+| [[http://en.wikipedia.org/wiki/Log-normal_distribution|Log-Normal]]  | $\mu,\sigma$  |''meanlog'', \\ ''sdlog''  |  ''lnorm''  | $[0,\infty)$  |  Direita  | $e^{\mu+\sigma^2/2}$  | $(e^{\sigma^2} - 1)\,e^{2\mu+\sigma^2}$  |
+
+
+\\
+------------------
+\\
+
+====== Exercícios ======
+
+Faça os exercícios 202.1 a 202.5 no sistema [[http://www.lage.ib.usp.br/rserve|notaR]]. 
+====== Questões motivadoras para discussão ======
+
+  - A inferência estatística clássica baseia-se fortemente na distribuição Gaussiana. Quais seriam as razões? Quais vantagens e desvantagens você vê nessa estratégia?
+  - A Gaussiana é a única distribuição que estudamos nesta unidade que tem a esperança indendente da variância. Você esperaria esta propriedade em medidas tomados de sistemas biológicos? Por que?
+  - Um pesquisador descobriu que a distribuição de biomassas das populações das espécies de uma comunidade é muito diferente da família Gaussiana. Ele tentou algumas transformações matemáticas até descobrir que os logarítmos das biomassas podem ser descritas pela família Gaussiana. Qual deve ser a relação entre a esperança dos logarítmos das biomassas e da esperança das biomassas?
+====== Recursos para Estudo ======
+
+
+===== Leituras =====
+
+=== Principal ===
+
+  * Probability and stochastic distributions for ecological modeling. Capítulo 4, item 4.5.2  de: Bolker, B.M. 2008 Ecological Models and Data in R Princeton: Princeton University Press.
+
+
+=== Complementares ===
+
+    * Randon variables and probability distributions. Cap.2 de: Gotelli, N.J. & Ellison, A.M. 2004. A primer of ecological statistics. Sinauer.
+
+  * Probability theory. Cap.3 de: Otto, S. P. & Day, T. (2007). A biologist's guide to mathematical modelling in ecology and evolution. Princenton, Princenton University Press.
+  
+  * Houle, D., Pélabon, C., Wagner, G. P., & Hansen, T. F. (2011). Measurement and meaning in biology. The Quarterly Review of Biology, 86(1), 3-34. //Excelente revisão sobre consequências das transformações matemáticas de dados em biologia.// [[http://bio.fsu.edu/~dhoule/Publications/Houle@@11Measurement.pdf|pdf]] na página do autor.
+
+  * Ruel, J. J., & Ayres, M. P. (1999). Jensen’s inequality predicts effects of environmental variation. Trends in Ecology & Evolution, 14(9), 361-366. //Introdução à desigualdade de Jensen e suas consequências biológicas.// [[http://www.dartmouth.edu/~mpayres/pubs/Jensen.PDF|pdf]] na página do autor.
+
+  * Verbete da wikipedia sobre a [[http://en.wikipedia.org/wiki/Taylor%27s_law|Lei de Taylor]], veja também as referências.
+
+  * Newman, M. E. (2005). Power laws, Pareto distributions and Zipf's law. Contemporary physics, 46(5), 323-351. //Ótima introdução a uma família de distribuições sem esperança//. [[http://arxiv.org/abs/cond-mat/0412004|preprint no repositório arxiv]].
+
+
+===== Na Internet =====
+
+  * Portal sobre distribuições de probabilidades na Wikipedia: [[http://en.wikipedia.org/wiki/Probability_distribution]]
+
+  * O [[https://github.com/ksmzn/ProbabilityDistributionsViewer|Probability Distributions Viewer]]  é um aplicativo em [[https://shiny.rstudio.com/|shiny]] que cria uma página html com  gráficos interativos de distribuições de probabilidade.  Você pode  executá-lo de seu [[https://statdist.ksmzn.com/|site interativo]],  ou localmente em seu computador. Instruções para executar localmente [[http://cmq.esalq.usp.br/BIE5781/doku.php?id=01-discretas:01-discretas#visualizador_de_distribuicoes_usado_em_aula|aqui]]
+
+  * [[http://www.math.uah.edu/stat/|Virtual Laboratories in Probability and Statistics]]: portal completo e aprofundado sobre probabilidade, teoria estatística e processos estocásticos. Excelentes textos de estudo, aplicativos, dados, bibliografia e recursos para programação.
+
+  * Distribuições interativas //on-line// do Statistics Online Computational Resource da UCLA: [[http://www.socr.ucla.edu/htmls/SOCR_Distributions.html]]
+
+  * Capítulo sobre variáveis aleatórias do //e-book// de Probabilidade e Estatística da UCLA: [[http://wiki.stat.ucla.edu/socr/index.php/EBook#Chapter_IV:_Probability_Distributions]]
+
+ 
+  * Excelente vídeo-aula sobre o conceito de momentos de distribuições probabilísticas, do projeto [[https://ocw.mit.edu/resources/res-tll-004-stem-concept-videos-fall-2013|STEM]] do MIT: [[https://ocw.mit.edu/resources/res-tll-004-stem-concept-videos-fall-2013/videos/probability-and-statistics/moments-of-distributions/]]. 
+
+  * Um excelente resumo das propriedades e relações entre distribuições de probabilidade: 
+         * Leemis, L. M., and J. T. McQueston. 2008. Univariate Distribution Relationships. The American Statistician 62:45-53.[[http://www.math.wm.edu/~leemis/2008amstat.pdf|pdf na página do autor]]
+         * [[http://www.johndcook.com/distribution_chart.html|Mapa interativo de relações entre as distribuições de probabilidades]]feito a partir do artigo de Leemis & McQueston (2008).
+
+  * [[http://www.wzchen.com/probability-cheatsheet/|Probability cheatsheet]]: teoria básica da probabilidade em 10 páginas.
+
+  * Várias atividades em JAVA com a normal no livro on-line //Seeing Statistics// : [[http://www.seeingstatistics.com/seeing1999/normal/normal.html]]
+
+    * [[https://www.youtube.com/watch?v=YINTTVjBrY4| O segredo da meritocracia]]: Átila Iamarino explica o tabuleiro de Galton. 
+
+  * [[http://stat.ethz.ch/~stahel/lognormal/|Life is log-normal]] : argumentação provocadora a favor do uso da log-normal ao invés da normal, com link para o artigo e uma demonstração animada.
+
+  * [[http://twitter.com/ProbFact|ProbFact]], um canal no twiter que posta fatos sobre distribuições de probabilidades.
+
+  * **Sobre o conceito matemático de infinito**: 
+    * dois ótimos vídeos do fantástico canal de popularização da matemática [[http://www.youtube.com/user/numberphile|Numberphille]]:
+       * [[http://www.youtube.com/watch?v=elvOZm0d4H0|O infinito é maior do que você acredita]]
+       * [[http://www.youtube.com/watch?v=dDl7g_2x74Q|Paradoxos da infinitude]]
+    * [[http://elaestaemtudo.ime.usp.br/?portfolio=new-mobile-app-2|Aline e o Infinito]], do projeto [[http://elaestaemtudo.ime.usp.br/|Ela está em tudo (Sim, Matemática é coisa de menina)]] , do IME -USP e UFABC.
+
+
+
+

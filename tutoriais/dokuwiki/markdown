@@ -1,0 +1,471 @@
+<h1 id="distribuições-discretas">1. Distribuições Discretas</h1>
+<p>Os <em>Modelos de Distribuição de Probabilidades</em> são o tema dessa disciplina. Nesse tópicos são apresentados o conceito de Distribuição de Probabilidades e a distinção entre variáveis discretas e contínuas. Segue-se uma apresentação dos principais modelos de distribuição de probabilidades de variáveis discretas, que são contagens ou ranqueamentos. <strong>Assim, uma variável discreta é aquela que pode ter valores no conjunto dos <a href="https://en.wikipedia.org/wiki/Natural_number">números naturais</a>, ou em um subconjunto deles.</strong></p>
+<p>Com os tutoriais desta página você vai simular em computador os cenários que algumas distribuições de probabilidade descrevem matematicamente. Com isso poderá verificar características destes construtos matemáticos com "experimentos <em>in silico</em>".</p>
+<h1 id="conceitos">Conceitos</h1>
+<ul>
+<li>Distribuição de probabilidade</li>
+<li>Variáveis discretas e contínuas</li>
+<li>Função de Densidade Probabilística</li>
+<li>Função de Probabilidade Acumulada</li>
+<li>Parâmetros da distribuição</li>
+<li>Esperança e variância</li>
+<li>Distribuições discretas mais usadas em Ecologia</li>
+</ul>
+<h1 id="tutoriais">Tutoriais</h1>
+<h2 id="distribuição-binomial">Distribuição Binomial</h2>
+<p>Qual a probabilidade de que nasça apenas um macho em uma ninhada de cinco filhotes de cachorro-do-mato, se a definição do sexo é independente para cada um, e as chances de nascerem machos e fêmeas são iguais?</p>
+<p>Essa probabilidade é obtida pela distribuição binomial, com o seguinte comando no R:</p>
+<pre class="rsplus"><code>dbinom(x=1,size=5,prob=0.5)
+</code></pre>
+<p>Esta função retorna a probabilidade do número de <em><u>sucessos</u></em> de um total de <em><u>tentativas</u></em> independentes, dada a probabilidade de sucesso em cada tentativa. O número de tentativas (<code>size</code>) e a probabilidade (<code>prob</code>) são os <em><u>parâmetros</u></em> da função.</p>
+<p>Qual sua expectativa se alterarmos os parâmetros? Por exemplo, experimente reduzir as chances de nascimento de machos para um terço:</p>
+<pre class="rsplus"><code>dbinom(x=1,size=5,prob=1/3)
+</code></pre>
+<p>E se aumentarmos o tamanho da ninhada?</p>
+<pre class="rsplus"><code>dbinom(x=1,size=10,prob=0.5)
+</code></pre>
+<hr />
+<p><em><u>Antes de prosseguir, certifique-se que você compreendeu os motivos das diferenças dos três resultados.</u></em></p>
+<hr />
+<h2 id="esperança-matemática-da-binomial">Esperança Matemática da Binomial</h2>
+<p>Voltando ao primeiro caso de variável binomial, os resultados possíveis para uma ninhada são 0, 1, 2, 3, 4 ou 5 machos. Suas probabilidades são:</p>
+<pre class="rsplus"><code>p1&lt;- dbinom(x=0:5, size=5, prob=0.5)
+names(p1) &lt;- 0:5
+p1
+</code></pre>
+<p>O que podemos colocar em um gráfico:</p>
+<pre class="rsplus"><code>plot(0:5,p1,type=&quot;h&quot;,lwd=5,col=&quot;blue&quot;,xlab=&quot;N de machos&quot;,ylab=&quot;Probabilidade&quot;)
+</code></pre>
+<p>Todos os valores entre zero e cinco machos podem ocorrer, mas alguns são mais prováveis. Se tivéssemos uma amostra de muitas ninhadas, qual seria o número médio de machos? Podemos simular essa situação, sorteando mil valores de uma distribuição binomial, com os mesmos parâmetros:</p>
+<pre class="rsplus"><code>sim1 &lt;- rbinom(n=1000,size=5,prob=0.5)
+</code></pre>
+<p>Os primeiros valores são:</p>
+<pre class="rsplus"><code>head(sim1)
+</code></pre>
+<p>E a média dos mil valores é obtida com:</p>
+<pre class="rsplus"><code>mean(sim1)
+</code></pre>
+<p>Este número faz sentido para você? Ele é uma aproximação da <em><u>esperança matemática</u></em> (ou <em><u>valor esperado</u></em>) da variável que segue a distribuição binomial.</p>
+<p>O valor teórico da esperança matemática de uma variável aleatória discreta é obtido multiplicando-se cada valor por sua probabilidade, e então somando-se estes resultados((A formulação de esperança para variáveis aleatórias contínuas é análoga, mas não é a mesma, veja na seção sobre <a href="/02-continuas/02-continuas">Distribuições Contínuas</a> )):</p>
+<p>$$ E[X] = \sum_{i=1}^n x_i P(X=x_i) $$</p>
+<p>No R podemos calcular isto com os comandos:</p>
+<pre class="rsplus"><code>esper &lt;- sum(0:5*p1)
+esper
+</code></pre>
+<p>Marque este valor no eixo x do gráfico:</p>
+<pre class="rsplus"><code>mtext(at=esper,text=&quot;^&quot;,side=1,line=0.5,cex=2,col=&quot;red&quot;)
+</code></pre>
+<p>Uma interpertação da esperança é que ela é o centro de massa de uma distribuição de probabilidades. Se o eixo do gráfico fosse uma balança, a média seria o ponto de apoio para que os dois lados se equilibrassem. A esperança é a média da distribuição, o valor médio esperado para a variável aleatória.</p>
+<h2 id="alterando-parâmetros-da-distribuição-binomial">Alterando Parâmetros da Distribuição Binomial</h2>
+<p>Calcule as probabilidades para ninhadas de 5 e 10 filhotes, com probabilidades de 1/3 e 0,5 de nascimento de machos:</p>
+<pre class="rsplus"><code> p2 &lt;- dbinom(0:5,size=5,prob=1/3)
+ p3 &lt;- dbinom(0:10,size=10,prob=0.5)
+ p4 &lt;- dbinom(0:10,size=10,prob=1/3)
+</code></pre>
+<p>Faça gráficos das distribuições de probabilidade para avaliar o efeito das mudanças dos parâmetros:</p>
+<pre class="rsplus"><code> maxp &lt;- max(c(p1,p2,p3,p4))
+ par(mfrow=c(2,2))
+ plot(0:5,p1,main=&quot;n=5, p=0.5&quot;,  xlim=c(0,10), ylim=c(0,maxp),type=&quot;h&quot;,lwd=5,xlab=&quot;N de machos&quot;,ylab=&quot;Probabilidade&quot;)
+ plot(0:5,p2,main=&quot;n=5, p=1/3&quot;,  xlim=c(0,10),ylim=c(0,maxp),type=&quot;h&quot;,lwd=5,xlab=&quot;N de machos&quot;,ylab=&quot;Probabilidade&quot;)
+ plot(0:10,p3,main=&quot;n=10, p=0.5&quot;,xlim=c(0,10),ylim=c(0,maxp),type=&quot;h&quot;,lwd=5,xlab=&quot;N de machos&quot;,ylab=&quot;Probabilidade&quot;)
+ plot(0:10,p4,main=&quot;n=10, p=1/3&quot;,xlim=c(0,10),ylim=c(0,maxp),type=&quot;h&quot;,lwd=5,xlab=&quot;N de machos&quot;,ylab=&quot;Probabilidade&quot;)
+ par(mfrow=c(1,1))
+</code></pre>
+<h2 id="distribuição-poisson">Distribuição Poisson</h2>
+<p>A distribuição Poisson é um modelo para o número de eventos observados numa unidade de tempo ou de espaço, dado que a taxa de eventos por unidade é constante, e os eventos ocorrem de modo independente. O único parâmetro da Poisson é $\lambda$, a taxa de eventos por unidade.</p>
+<p>Portanto, se um certo número de objetos está distribuído ao acaso por uma área, e esta área é dividida em quadrículas de mesmo tamanho, o número de objetos por quadrículas pode ser descrito por uma distribuição Poisson. Neste caso, o parâmetro <strong>λ</strong> será o total de objetos dividido pelo total de quadrículas.</p>
+<p>Para simular uma situação como esta, vamos distribuir ao acaso 1.000 plantas em uma área de 20 x 20 metros, divida em quadrículas de 1 x 1 m, como na figura abaixo</p>
+<p>&lt;box 80% center red| Plantas distribuídas ao acaso em uma área de 20 x 20. &gt; <img src="poisson1.png" alt="poisson1.png" /> &lt;/box&gt;</p>
+<p>Primeiro geramos mil coordenadas $(x,y)$ entre 0 e 20, de uma distribuição uniforme<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>:</p>
+<pre class="rsplus"><code>set.seed(42) ## fixa a semente de números aleatórios
+x &lt;- runif(n=1000,min=0, max=20)
+y &lt;- runif(n=1000,min=0, max=20)
+</code></pre>
+<p>Para simular as quadrículas, dividimos as coordenadas em fatores com intervalo de um, que representam segmentos de um metro. As linhas recebem rótulos de 1 a 20, e as colunas rótulos de A a T:</p>
+<pre class="rsplus"><code>x.parc &lt;- cut(x,breaks=0:20, labels=1:20)
+y.parc &lt;- cut(y,breaks=0:20, labels=LETTERS[1:20])
+</code></pre>
+<p>E então usamos a função <code>table</code> para contar quantos valores há em cada combinação destes fatores. Esta tabela cruzada é então transformada em um <em>data frame</em> e o resultado atribuído a um objeto:</p>
+<pre class="rsplus"><code>cont &lt;- data.frame(table(x.parc,y.parc))
+</code></pre>
+<p>O objeto resultante terá a contagem de pontos em cada combinação dos rótulos de linhas e colunas, ou seja, quantos plantas há em cada quadrícula:</p>
+<pre class="rsplus"><code>&gt; head(cont)
+  x.parc y.parc Freq
+1      1      A    1
+2      2      A    1
+3      3      A    3
+4      4      A    3
+5      5      A    1
+6      6      A    3
+&gt; tail(cont)
+    x.parc y.parc Freq
+395     15      T    1
+396     16      T    2
+397     17      T    3
+398     18      T    1
+399     19      T    2
+400     20      T    2
+</code></pre>
+<p>Contamos o número de parcelas com cada abundância com a função <code>table</code></p>
+<pre class="rsplus"><code>     freq.ab &lt;- table(cont$Freq)
+</code></pre>
+<p>Dividimos estas contagens pelo total de parcelas para obter proporções, e as representamos em um gráfico aplicando a função <code>plot</code>:</p>
+<pre class="rsplus"><code>plot(freq.ab/400, xlab=&quot;N de indivíduos na parcela&quot;, 
+     ylab=&quot;Proporção das parcelas&quot;)
+</code></pre>
+<p>Em seguida adicionamos as probabilidades previstas para uma variável Poisson com a mesma taxa de ocorrência, que é de 1.000 plantas em 400 parcelas ($\lambda = 2,5$).</p>
+<pre class="rsplus"><code>points(x=0:max(cont$Freq), y=dpois(0:max(cont$Freq), 
+       lambda=1000/400), type=&quot;b&quot;, 
+       col=&quot;blue&quot;, lty=2)
+</code></pre>
+<p>Avalie visualmente a concordância entre os valores previstos e simulados.</p>
+<h3 id="extras">Extras</h3>
+<p>Caso queira reproduzir a primeira figura deste tutorial, os comandos são:</p>
+<pre class="rsplus"><code>plot(x=x,y=y,axes=F, xlab=&quot;&quot;, ylab=&quot;&quot;, 
+     xlim=c(-1,20),ylim=c(0,21))
+segments(x0=rep(0,20),y0=0:20,
+         x1=rep(20,20),y1=0:20, col=&quot;gray&quot;, lty=2)
+segments(x0=0:20,y0=rep(0,20),
+         x1=0:20,y1=rep(20,20),col=&quot;gray&quot;, lty=2)
+text(y=seq(0.5,19.5,by=1),x=-1, labels=20:1)
+text(x=seq(0.5,19.5,by=1),y=21, labels=LETTERS[1:20])
+</code></pre>
+<h2 id="distribuição-geométrica">Distribuição Geométrica</h2>
+<p>A distribuição geométrica é um modelo para o número de tentativas negativas até que se obtenha o primeiro resultado positivo, com uma probabilidade constante de ter um resultado positivo em cada tentativa.</p>
+<p>Formalmente, é o número de fracassos até o primeiro sucesso em uma sequência de <a href="http://en.wikipedia.org/wiki/Bernoulli_trial">ensaios de Bernoulli</a>.</p>
+<p>Um exemplo biológico seria a sobrevivência de indivíduos em intervalos discretos de tempo, com uma taxa de mortalidade constante. A cada intervalo discreto de tempo, cada indivíduo da população tem a probabilidade $p$ de morrer, portanto a probabilidade de que a morte ocorra após $x$ intervalos será:</p>
+<p>$$P(x) = p(1-p)^x$$</p>
+<p>Que é a distribuição de probabilidades da variável aleatória geométrica.</p>
+<p>Com o R, podemos simular, para um indivíduo, uma sequência de intervalos, sendo que em cada intervalo sorteamos se o indivíduo morrerá ou não, com uma probabilidade fixa. Usamos a função <code>sample</code> para sortear entre "vivo" e "morto" com probabilidades $1-p$ e $p$ a cada intervalo. Usamos a função <code>while</code> para manter o sorteio correndo até a morte do indivíduo (primeiro sorteio do valor "morto"), e contamos quantos sorteios ocorreram até que isto aconteça:</p>
+<pre class="rsplus"><code>&gt; p.morte &lt;- 0.2
+&gt; result &lt;- 0 
+&gt; while(sample(c(&quot;vivo&quot;,&quot;morto&quot;),prob=c(1-p.morte,p.morte),size=1)==&quot;vivo&quot;){
+      result &lt;- result+1
+    }
+&gt; result
+[1] 8
+</code></pre>
+<p>Agora vamos criar uma função que repete esta simulação para vários indivíduos. Seus argumentos são o número de indivíduos (<code>N</code>) e a probabilidade de morrer a cada intervalo (<code>p.morte</code>):</p>
+<pre class="rsplus"><code>sobrevive &lt;- function(N=1000, p.morte=0.2){
+  result &lt;- rep(0,N)
+  for(i in 1:N){
+    while(
+          sample( c(&quot;vivo&quot;,&quot;morto&quot;), 
+                 prob= c(1-p.morte,p.morte),size=1)==&quot;vivo&quot;){
+      result[i] &lt;- result[i]+1
+    }
+  }
+  result
+}
+</code></pre>
+<p>E podemos fazer uma simulação para 2.000 indivíduos, com probabilidade de morte de 0,2:</p>
+<pre class="rsplus"><code>sim2 &lt;- sobrevive(N=2000)
+</code></pre>
+<p>E agora vamos fazer um gráfico do número de indivíduos que viveram até cada valor de intervalo. Para isto, primeiro criamos uma variável de fator com valores observados de intervalo, mas com níveis de zero ao valor máximo, para garantir que mesmo valores sem observações na amostra sejam representados:</p>
+<pre class="rsplus"><code>   sim2.f &lt;- factor(sim2,levels=0:max(sim2))
+</code></pre>
+<p>E então aplicamos a função <code>plot</code> sobre a tabulação desta variável, divida pelo total de indivíduos para ser uma proporção:</p>
+<pre class="rsplus"><code>plot(table(sim2.f)/length(sim2), xlab=&quot;Tempo de vida&quot;,
+      ylab=&quot;Proporção dos Indivíduos&quot;)      
+</code></pre>
+<p>Por fim acrescentamos os valores de probabilidade da variável geométrica:</p>
+<pre class="rsplus"><code>   points(0:max(sim2),dgeom(0:max(sim2),prob=0.2),type=&quot;b&quot;,col=&quot;blue&quot;)
+</code></pre>
+<p>Avalie a correspondência entre os valores simulados das proporções de indivíduos e as probabilidades teóricas.</p>
+<h2 id="distribuição-binomial-negativa">Distribuição Binomial Negativa</h2>
+<p>A distribuição binomial negativa é uma extensão da distribuição geométrica, que descreve a probabilidade de fracassos em uma sequência de <a href="http://en.wikipedia.org/wiki/Bernoulli_trial">ensaios de Bernoulli</a> até que se obtenha $n$ sucessos, dado que a probabilidade $p$ de sucesso a cada tentativa é constante.</p>
+<p>Esta variável pode ser reparametrizada, substituindo-se o $p$ por um parâmetro $\mu$ que corresponde à esperança da distribuição, ou seja, sua média.</p>
+<p>$$\mu=\frac{n(1-p)}{p}$$</p>
+<p>Nesta formulação, $n$ pode ter qualquer valor real positivo e pode ser interpretado como um índice de dispersão. Recebe entao o nome de $k$ para distinguí-lo da outra parametrização. Quanto menor o $k$ maior a concentração da massa da distribuição nos valores baixos, o que dá à distribuição uma forte assimetria à direita.</p>
+<p>Por esta propriedade, a binomial negativa é um modelo simples para descrever contagens de eventos agregados por unidade amostral. Neste tutorial seguiremos a mesma lógica do tutorial sobre o processo Poisson, mas agora simulando uma planta distribuída em agregados em uma área de 20 x 20 m, como na figura abaixo<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>.</p>
+<p>&lt;box centered 90% red| Simulação de plantas distribuídas em agregados em uma área de 20 x 20 m. Pontos azuis são os focos de agregação, veja explicação no texto. &gt; <img src="nbinom1.png" alt="nbinom1.png" /> &lt;/box&gt;</p>
+<p>Para simular este padrão, primeiro sorteamos 20 coordenadas entre 0 e 20 m de uma distribuição uniforme. Estes 20 pontos distribuídos ao acaso serão os centros dos agregados, representados em azul na figura.</p>
+<pre class="rsplus"><code>set.seed(42)
+cx &lt;- runif(20,0,20)
+cy &lt;- runif(20,0,20)
+</code></pre>
+<p>Em seguida sorteamos 2.000 coordenadas de uma distribuição normal padronizada <a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>, e somamos a cada uma destas coordenadas as coordenadas dos centros. Com isto teremos 100 pontos agregados em torno de cada centro <a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a>.</p>
+<pre class="rsplus"><code>px &lt;- rnorm(2000)
+py &lt;- rnorm(2000)
+x1 &lt;- cx+px
+y1 &lt;- cy+py
+</code></pre>
+<p>Em seguida usamos a <a href="http://ecologia.ib.usp.br/bie5782/doku.php?id=bie5782:03_apostila:04-dados#subconjuntos_e_indexa%C3%A7%C3%A3o">indexação</a> para ficar apenas com os pontos que estão dentro da área (com coordenadas entre 0 e 20):</p>
+<pre class="rsplus"><code>x2 &lt;- x1[x1&gt;0&amp;x1&lt;20&amp;y1&gt;0&amp;y1&lt;20]
+y2 &lt;- y1[x1&gt;0&amp;x1&lt;20&amp;y1&gt;0&amp;y1&lt;20]
+</code></pre>
+<p>Para simular as quadrículas, dividimos as coordenadas em fatores com intervalo de um, que representam segmentos de um metro. As linhas recebem rótulos de 1 a 20, e as colunas rótulos de A a T:</p>
+<pre class="rsplus"><code>x2.parc &lt;- cut(x2,breaks=0:20, labels=1:20)
+y2.parc &lt;- cut(y2,breaks=0:20, labels=LETTERS[1:20])
+</code></pre>
+<p>E então usamos a função <code>table</code> para contar quantos valores há em cada combinação destes fatores. Esta tabela cruzada é então transformada em um <em>data frame</em> e o resultado atribuído a um objeto:</p>
+<pre class="rsplus"><code>   cont2 &lt;- data.frame(table(x2.parc,y2.parc))
+</code></pre>
+<p>O número de indivíduos de cada parcela, que é a coluna <code>Freq</code> deste objeto, é transformado em um fator, que tem níveis de zero ao máximo de indivíduos observado em uma parcela:</p>
+<pre class="rsplus"><code>    cont2.f &lt;- factor(cont2$Freq, levels=0:max(cont2$Freq))
+</code></pre>
+<p>Dividimos estas contagens pelo total de parcelas para obter proporções, e as representamos em um gráfico aplicando a função <code>plot</code>:</p>
+<pre class="rsplus"><code>plot(table(cont2.f)/400, xlab=&quot;N de indivíduos na parcela&quot;,
+     ylab=&quot;Proporção das parcelas&quot;)
+</code></pre>
+<p>Em seguida adicionamos as probabilidades previstas para uma variável Poisson com a mesma taxa de ocorrência, que é o total de plantas dividido por 400 parcelas:</p>
+<pre class="rsplus"><code>points(x=0:max(cont2$Freq),y=dpois(0:max(cont2$Freq),
+       lambda=sum(cont2$Freq)/400), 
+       type=&quot;b&quot;, col=&quot;blue&quot;, lty=2)
+</code></pre>
+<p>A distribuição Poisson não é um bom modelo, o que era esperado, já que ela descreve eventos independentes, isto é, distribuídos aleatoriamente.</p>
+<p>Vamos então comparar o desempenho da Poisson com o da Binomial Negativa. Sabemos que um dos parâmetros desta distribuição, $\mu$ corresponde à taxa de ocorrência, mas precisamos estimar o outro, que é o índice de dispersão $k$ Para isto usaremos a função <code>fitdistr</code> do pacote <code>MASS</code>. Aplicada a um vetor numérico, esta função retorna a estimativa dos parâmetros<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>, que podem ser extraídos com a função <code>coef</code>:</p>
+<pre class="rsplus"><code>require(MASS) # basta uma vez por seção
+cont2.nb &lt;- coef(fitdistr(cont2$Freq,&quot;negative binomial&quot;))
+cont2.nb
+</code></pre>
+<p>Com os valores estimados dos parâmetros podemos acrescentar ao gráfico as probabilidades previstas pela Binomial Negativa para cada abundância:</p>
+<pre class="rsplus"><code>points(x=0:max(cont2$Freq),y=dnbinom(0:max(cont2$Freq),
+       mu=cont2.nb[2],size=cont2.nb[1]), 
+       type=&quot;b&quot;, col=&quot;red&quot;, lty=2)
+</code></pre>
+<p>e adicione uma legenda ao gráfico com</p>
+<pre><code>  legend(&quot;topright&quot;, c(&quot;Poisson&quot;, &quot;Binomial negativa&quot;), lty=1, col=c(&quot;blue&quot;, &quot;red&quot;))
+  
+</code></pre>
+<p>Note como a probabilidade de valores pequenos é maior na Binomial Negativa, em comparação com a Poisson, embora ambas tenham a mesma taxa de ocorrência. É isto que você esperaria no caso de agregação espacial?</p>
+<p>O próximo tutorial mostra como a Binomial Negativa se aproxima de uma Poisson se aumentamos o valor do parâmetro <code>k</code></p>
+<h3 id="extras-1">Extras</h3>
+<p>Caso queira reproduzir a figura do padrão espacial, os comandos são:</p>
+<pre class="rsplus"><code>plot(x=x2,y=y2,axes=F, xlab=&quot;&quot;, ylab=&quot;&quot;, xlim=c(-1,20),ylim=c(0,21))
+points(cx,cy, col=&quot;blue&quot;, pch=19)
+segments(x0=rep(0,20),y0=0:20,x1=rep(20,20),y1=0:20, col=&quot;gray&quot;, lty=2)
+segments(x0=0:20,y0=rep(0,20),x1=0:20,y1=rep(20,20),col=&quot;gray&quot;, lty=2)
+text(y=seq(0.5,19.5,by=1),x=-1, labels=20:1)
+text(x=seq(0.5,19.5,by=1),y=21, labels=LETTERS[1:20])
+x2.parc &lt;- cut(x2,breaks=0:20, labels=1:20)
+y2.parc &lt;- cut(y2,breaks=0:20, labels=LETTERS[1:20])
+</code></pre>
+<h2 id="binomial-negativa-e-poisson">Binomial Negativa e Poisson</h2>
+<p>Use os comandos abaixo para plotar gráficos da distribuição Poisson com média 4 e das distribuições Binomiais negativas com mesma média e parâmetro de dispersão crescentes. Quais suas conclusões?</p>
+<pre class="rsplus"><code>par(mfrow=c(2,2))
+plot(0:30, dpois(0:30,lambda=4),type=&quot;b&quot;, xlab=&quot;x&quot;, ylab=&quot;p&quot;,
+     ylim=c(0,0.35),
+     main=expression(paste(&quot;Poisson, &quot;, lambda,&quot;=4&quot;)))
+plot(0:30, dnbinom(0:30,mu=4,size=0.5),type=&quot;b&quot;,
+     ylim=c(0,0.35), xlab=&quot;x&quot;, ylab=&quot;p&quot;,
+     main=expression(paste(&quot;Bin. Neg., &quot;, mu,&quot;=4&quot;, &quot;, k=0.5&quot;)))
+plot(0:30, dnbinom(0:30,mu=4,size=1.5),type=&quot;b&quot;,
+     ylim=c(0,0.35), xlab=&quot;x&quot;, ylab=&quot;p&quot;,
+     main=expression(paste(&quot;Bin. Neg., &quot;, mu,&quot;=4&quot;, &quot;, k=1.5&quot;)))
+plot(0:30, dnbinom(0:30,mu=4,size=20),type=&quot;b&quot;,
+     ylim=c(0,0.35), xlab=&quot;x&quot;, ylab=&quot;p&quot;,
+     main=expression(paste(&quot;Bin. Neg., &quot;, mu,&quot;=4&quot;, &quot;, k=20&quot;)))
+par(mfrow=c(1,1))
+</code></pre>
+<h2 id="binomial-negativa-e-geométrica">Binomial Negativa e Geométrica</h2>
+<p>Compare a distribuição Geométrica com parâmetro $p$ (probabilidade de sucesso em cada tentativa) igual a 0,2 e a distribuição Binomial Negativa com o mesmo valor de $p$ e com parâmetro $n$ (número de sucessos desejados) igual a um.</p>
+<pre class="rsplus"><code>par(mfrow=c(1,2))
+plot(0:30,dgeom(0:30,prob=0.2),xlab=&quot;N de fracassos&quot;, ylab=&quot;P&quot;,
+     main=&quot;Geométrica, p=0,2&quot;)
+plot(0:30, dnbinom(0:30,size=1,prob=0.2),xlab=&quot;N de fracassos&quot;, ylab=&quot;P&quot;,
+     main=&quot;Bin. Neg., n=1, p=0,2&quot;)
+par(mfrow=c(1,1))
+</code></pre>
+<p>Como você explica este resultado?</p>
+<h2 id="binomial-e-poisson">Binomial e Poisson</h2>
+<p>Compare a distribuição Binomial com parâmetro $n$ alto e parâmetro $p$ baixo com a distribuição Poisson de mesma média <a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a>:</p>
+<pre class="rsplus"><code>par(mfrow=c(1,2))
+plot(0:10, dbinom(0:10, prob=0.01, size=200), xlab=&quot;x&quot;, ylab=&quot;P&quot;,
+     main=&quot;Binomial, n=200, p=0,01&quot;)
+plot(0:10, dpois(0:10,lambda=0.01*200), xlab=&quot;x&quot;, ylab=&quot;P&quot;,
+     main=expression(paste(&quot;Poisson, &quot;, lambda,&quot;=2&quot;)))
+par(mfrow=c(1,1))
+</code></pre>
+<ol>
+<li>Quais suas conclusões?</li>
+<li>Há uma interpretação biológica para isto?</li>
+</ol>
+<p><br />
+------------------<br />
+</p>
+<h1 id="distribuições-discretas-mais-usadas">Distribuições discretas mais usadas</h1>
+<table>
+<thead>
+<tr class="header">
+<th>Distribuição</th>
+<th>Parâmetros</th>
+<th>Parâmetros no R</th>
+<th>Função no R [dpqr]</th>
+<th>Suporte</th>
+<th>Assimetria</th>
+<th>Esperança</th>
+<th>Variância</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="http://en.wikipedia.org/wiki/Binomial_distribution">BINOMIAL</a></td>
+<td>$(p,n)$</td>
+<td><code>prob</code> ,<br />
+<code>size</code></td>
+<td><code>binom</code></td>
+<td>$[0 , n]$</td>
+<td>direita, esquerda, nenhuma</td>
+<td>$n p$</td>
+<td>$np(1-p)$</td>
+<td></td>
+</tr>
+<tr class="even">
+<td><a href="http://en.wikipedia.org/wiki/Negative_binomial_distribution">BINOMIAL NEGATIVA: parametrização 1</a></td>
+<td>$(p,n)$</td>
+<td><code>prob</code> ,<br />
+<code>size</code></td>
+<td><code>nbinom</code></td>
+<td>$[0, \infty]$</td>
+<td>direita</td>
+<td>$\frac{n(1-p)}{p}$</td>
+<td>$\frac{n(1-p)}{p</td>
+<td>2}$</td>
+</tr>
+<tr class="odd">
+<td><a href="http://en.wikipedia.org/wiki/Negative_binomial_distribution">BINOMIAL NEGATIVA: parametrização 2</a></td>
+<td>$(\mu,k)$</td>
+<td><code>mu</code> ,<br />
+<code>size</code></td>
+<td><code>nbinom</code></td>
+<td>$[0, \infty]$</td>
+<td>direita</td>
+<td>$\mu$</td>
+<td>$\mu+\frac{\mu</td>
+<td>2}{k}$</td>
+</tr>
+<tr class="even">
+<td><a href="http://en.wikipedia.org/wiki/Geometric_distribution">GEOMÉTRICA</a></td>
+<td>$ p $</td>
+<td><code>prob</code></td>
+<td><code>geom</code></td>
+<td>$[0, \infty]$</td>
+<td>direita</td>
+<td>$\frac{1-p}{p}$</td>
+<td>$\frac{1-p}{p</td>
+<td>2}$</td>
+</tr>
+<tr class="odd">
+<td><a href="http://en.wikipedia.org/wiki/Poisson_distribution">POISSON</a></td>
+<td>$\lambda$</td>
+<td><code>lambda</code></td>
+<td><code>pois</code></td>
+<td>$[0, \infty]$</td>
+<td>direita</td>
+<td>$\lambda$</td>
+<td>$\lambda$</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><br />
+------------------<br />
+</p>
+<h1 id="exercícios">Exercícios</h1>
+<p>Faça os exercícios 201.1 a 201.4 no sistema <a href="http://www.lage.ib.usp.br/rserve">notaR</a>.</p>
+<h1 id="questões-motivadoras-para-discussão">Questões Motivadoras para Discussão</h1>
+<ol>
+<li>Qual a relação entre o conceito de distribuição de probabilidade e a variabilidade/heterogeneidade observada nos dados dos estudos de Ecologia e Recursos Naturais? Como essa questão está ligada ao conceito de "<u>variância</u>" da Inferência Estatística Clássica?</li>
+<li>A distribuições discretas frequentemente são utilizadas como modelos de "<u>contagens</u>" associadas a fenômenos naturais que ocorrem continuamente no tempo e/ou no espaço. Como é a relação entre as distribuições discretas e o comportamento temporal e/ou espacial dos fenômenos observados?</li>
+<li>Por que é necessária a distinção entre variáveis <u>discretas</u> e variáveis <u>contínuas</u>? Essa distinção é de natureza puramente matemática ou reflete aspectos objetivos e práticos referentes à coleta de dados nos estudos de Ecologia e Recursos Naturais?</li>
+</ol>
+<h1 id="recursos-para-estudo">Recursos para Estudo</h1>
+<h2 id="leituras">Leituras</h2>
+<h4 id="principal">Principal</h4>
+<ul>
+<li>Probability and stochastic distributions for ecological modeling. Capítulo 4, itens 4.4, e 4.5.1 de Bolker, B.M. Ecologial Models and Data in R, Princeton University Press, 2008.</li>
+</ul>
+<h4 id="complementares">Complementares</h4>
+<ul>
+<li>Probability and stochastic distributions for ecological modeling. Capítulo 4, itens 4.1, 4.2 e 4.3 de: Bolker, B.M. 2008 Ecological Models and Data in R Princeton: Princeton University Press.</li>
+</ul>
+<ul>
+<li>Random variables and probability distributions. Cap.2 de: Gotelli, N.J. &amp; Ellison, A.M. 2004. A primer of ecological statistics. Sinauer.</li>
+</ul>
+<ul>
+<li>Probability theory. Cap.3 de: Otto, S. P. &amp; Day, T. (2007). A biologist's guide to mathematical modelling in ecology and evolution. Princenton, Princenton University Press.</li>
+</ul>
+<h2 id="na-internet">Na Internet</h2>
+<ul>
+<li>Portal sobre distribuições de probabilidades na Wikipedia: <a href="http://en.wikipedia.org/wiki/Probability_distribution">http://en.wikipedia.org/wiki/Probability_distribution</a></li>
+</ul>
+<ul>
+<li>O <a href="https://github.com/ksmzn/ProbabilityDistributionsViewer">Probability Distributions Viewer</a> é um aplicativo em <a href="https://shiny.rstudio.com/">shiny</a> que cria uma página html com gráficos interativos de distribuições de probabilidade. Você pode executá-lo de seu <a href="https://statdist.ksmzn.com/">site interativo</a>, ou localmente em seu computador. Instruções para executar localmente <a href="http://cmq.esalq.usp.br/BIE5781/doku.php?id=01-discretas:01-discretas#visualizador_de_distribuicoes_usado_em_aula">abaixo</a></li>
+</ul>
+<ul>
+<li><a href="https://uasnap.shinyapps.io/rvdist/">Distributions of Random Variables</a>, simulações de amostras de diferentes distribuições de probabilidades, programadas em <a href="http://shiny.rstudio.com/">shiny</a>.</li>
+</ul>
+<ul>
+<li><a href="http://www.math.uah.edu/stat/">Virtual Laboratories in Probability and Statistics</a>: portal completo e aprofundado sobre probabilidade, teoria estatística e processos estocásticos. Excelentes textos de estudo, aplicativos, dados, bibliografia e recursos para programação.</li>
+</ul>
+<ul>
+<li>Distribuições interativas <em>on-line</em> do Statistics Online Computational Resource da UCLA: <a href="http://www.socr.ucla.edu/htmls/SOCR_Distributions.html">http://www.socr.ucla.edu/htmls/SOCR_Distributions.html</a></li>
+</ul>
+<ul>
+<li>Capítulo sobre variáveis aleatórias do <em>e-book</em> de Probabilidade e Estatística da UCLA: <a href="http://wiki.stat.ucla.edu/socr/index.php/EBook#Chapter_IV:_Probability_Distributions">http://wiki.stat.ucla.edu/socr/index.php/EBook#Chapter_IV:_Probability_Distributions</a></li>
+</ul>
+<ul>
+<li>Excelente vídeo-aula sobre o conceito de momentos de distribuições probabilísticas, do projeto <a href="https://ocw.mit.edu/resources/res-tll-004-stem-concept-videos-fall-2013">STEM</a> do MIT: <a href="https://ocw.mit.edu/resources/res-tll-004-stem-concept-videos-fall-2013/videos/probability-and-statistics/moments-of-distributions/">https://ocw.mit.edu/resources/res-tll-004-stem-concept-videos-fall-2013/videos/probability-and-statistics/moments-of-distributions/</a>.</li>
+</ul>
+<ul>
+<li><a href="http://www.johndcook.com/distribution_chart.html">Mapa interativo de relações entre as distribuições de probabilidades</a>. Um resumo em html do execelente mapa de Leemis &amp; McQueston (2008).</li>
+</ul>
+<ul>
+<li>Um excelente resumo das propriedades e relações entre distribuições de probabilidade: </li>
+</ul>
+<pre><code>      * Leemis, L. M., and J. T. McQueston. 2008. Univariate Distribution Relationships. The American Statistician 62:45-53.[[http://www.math.wm.edu/~leemis/2008amstat.pdf|pdf na página do autor]]
+</code></pre>
+<ul>
+<li>Tópico sobre <a href="http://ecologia.ib.usp.br/bie5782/doku.php?id=bie5782:03_apostila:03-funcoes#distribui%C3%A7%C3%B5es_estat%C3%ADsticasfun%C3%A7%C3%B5es_no_r">distribuições estatísticas no R</a> na apostila on-line do curso <a href="http://ecologia.ib.usp.br/bie5782/doku.php?id=start">Uso da Linguagem R para Análise de dados Ecológicos</a>.</li>
+</ul>
+<ul>
+<li><a href="http://twitter.com/ProbFact">ProbFact</a>, um canal no twiter que posta fatos sobre distribuições de probabilidades.</li>
+</ul>
+<ul>
+<li><a href="http://www.wzchen.com/probability-cheatsheet/">Probability cheatsheet</a>: teoria básica da probabilidade em 10 páginas.</li>
+</ul>
+<ul>
+<li><strong>Sobre o conceito matemático de infinito</strong>: dois ótimos vídeos do fantástico canal de popularização da matemática <a href="http://www.youtube.com/user/numberphile">Numberphille</a>:
+<ul>
+<li><a href="http://www.youtube.com/watch?v=elvOZm0d4H0">O infinito é maior do que você acredita</a></li>
+<li><a href="http://www.youtube.com/watch?v=dDl7g_2x74Q">Paradoxos da infinitude</a></li>
+</ul></li>
+<li>Bombas V1 sobre Londres: um exemplo de livro didático de distribuição espacial aleatória.
+<ul>
+<li>Clarke, R.D., 1946. An application of the Poisson distribution. <a href="https://www.actuaries.org.uk/documents/application-poisson-distribution">Journal of the Institute of Actuaries, 22.</a> </li>
+<li><a href="http://bombsight.org">Bomb sight</a>: mapa interativo dos locais atingidos.</li>
+</ul></li>
+</ul>
+<h4 id="visualizador-de-distribuições-usado-em-aula">Visualizador de distribuições usado em aula</h4>
+<p>O <a href="https://github.com/ksmzn/ProbabilityDistributionsViewer">Probability Distributions Viewer</a> é um aplicativo em <a href="https://shiny.rstudio.com/">shiny</a> que cria uma página html com gráficos interativos de distribuições de probabilidade. Você pode executá-lo de seu <a href="https://statdist.ksmzn.com/">site interativo</a>, ou localmente em seu computador.</p>
+<p>Para executá-lo em seu computador abra o R execute os comandos:</p>
+<pre class="rsplus"><code>## Pacotes necessários
+packages &lt;- c(&quot;shiny&quot;, &quot;dplyr&quot;, &quot;shiny.i18n&quot;, &quot;purrr&quot;, 
+              &quot;shiny.i18n&quot;, &quot;R6&quot;, &quot;hypergeo&quot;, &quot;shinydashboard&quot;,
+              &quot;rmarkdown&quot;)
+              
+## Verifica se todos os pacotes estão instalados.
+## Instala os faltantes se for caso
+if (length(setdiff(packages, rownames(installed.packages()))) &gt; 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+
+## Carrega os pacotes
+lapply(packages, require, character.only = TRUE)
+    
+## Baixa o código do app do GitHub e executa o app localmente
+## A página deve abrir em seu navegador padrão
+runGitHub(&quot;ProbabilityDistributionsViewer&quot;, &quot;ksmzn&quot;)</code></pre>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>veremos esta distribuição na aula sobre variáveis contínuas. Por ora basta saber que com ela obtemos qualquer número entre um máximo e um mínimo com a mesma probabilidade<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2" role="doc-endnote"><p>Esta é uma simulação de um <em>Processo Homogêneo de Thomas</em>, veja Diggle PJ (2003) Statistical analysis of spatial point patterns. Arnold, London.<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3" role="doc-endnote"><p>isto é, com média zero e desvio-padrão um, detalhes na unidade sobre variáveis aleatórias contínuas<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4" role="doc-endnote"><p>a distribuição destes pontos em torno do centro segue uma normal bivariada, que você pode imaginar como sinos centrados em cada ponto azul<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5" role="doc-endnote"><p>Mais tarde neste curso você verá que esta é a estimativa de máxima verossimilhança. Por ora basta saber que é a estimativa mais plausível dos parâmetros que pode ser obtida com este conjunto de dados<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6" role="doc-endnote"><p>a média da Binomial é $np$ portanto 0,2 neste exemplo<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>

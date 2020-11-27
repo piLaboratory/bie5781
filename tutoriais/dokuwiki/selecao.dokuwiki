@@ -1,0 +1,413 @@
+====== 7. Seleção de Modelos ======
+
+
+\\
+Se tenho muitos modelos candidatos a descrever meus dados qual devo escolher? A seleção de modelos baseada em teoria da informação é uma resposta. É uma teoria muito elegante que demonstra a relação entre verossimilhança e a quantidade de informação que se perde quando aproximamos os dados com um modelo. O Critério de Informação de Akaike (AIC) expressa esta perda de informação, e fornece um critério simples de seleção: o melhor modelo será o que estiver a menor distância do processo probabilístico que gerou os dados. Ou seja, o melhor modelo é o que aproxima os dados com a menor perda de informação.
+
+Nos tutoriais abaixo você vai primeiro aplicar a seleção de modelos a dois casos simples. No último tutorial você vai reproduzir em computador os passos de dedução do AIC, partindo de medidas de distância informacional, seu uso para expressar divergência estatística, até chegar na formulação do AIC como uma dupla esperança.
+===== Conceitos =====
+
+  * Entropia e informação
+  * Divergência Estatística
+  * Distância de Kullback-Leibler
+  * Propriedades da Distância Kullback-Leibler
+  * Máxima Log-Verossimilhança
+  * Discrepância de Aproximação
+  * Discrepância de Estimação
+  * Critério de Informação de Akaike - AIC
+  * Interpretação do AIC
+  * Delta-AIC, peso de evidência, tabela de seleção de modelos
+
+
+===== Tutoriais =====
+
+==== Cipós e Sobrevivência de Árvores  ====
+
+Aqui retomamos o exercício da unidade de verossimilhança sobre [[03-funcao-veros:03-funcao-veros#exercicios|cipós e sobrevivência de árvores]]. 
+
+A tabela abaixo apresenta o número de árvores em diferentes classes
+de incidência de cipó (incidência crescente).  Os dados no ano de 
+1997 se referem a árvores com as quais se iniciou o estudo e 
+os dados no ano de 2000 se referem às árvores que sobreviveram.
+
+|     ^ Incidência de Cipó ^^^
+^ Ano ^  Baixa  ^  Média  ^  Alta  ^
+| 1997 | 1146 | 797 | 1081 |
+| 2000 | 1044 | 711 | 934 |
+
+Do exercício anterior já temos os perfis de verossimilhança das taxas de sobrevivência de cada grupo, que indicam que há diferenças entre elas:
+
+{{:07-selecao:ex_ver_2.png|Perfis de verossimilhança das taxas de sobrevivência para cada grupo}}
+
+É realista aplicar uma mesma taxa de sobrevivência para todas as árvores independentemente da classe? Esta pergunta é respondida comparando-se dois modelos:
+
+  - Todas as classes têm a mesma sobrevivência.
+  - Cada classe tem uma taxa de sobrevivência diferente.
+  - As classes de baixa e média infestação têm a mesma taxa de sobrevivência, que difere daquela da classe de alta infestação.
+  - As classes de alta e média infestação têm a mesma taxa de sobrevivência, que difere daquela da classe de baixa infestação.
+
+
+O número de sobreviventes pode ser descrito como uma distribuição binomial, cujo parâmetro $N$ é fixado pelo número de árvores em 1997. A estimativa de máxima verossimilhança da taxa de sobrevivência é a razão entre sobreviventes e este total.
+
+Vamos definir uma função para calcular a log-verossimilhança negativa:
+
+<code rsplus>
+LL.bin <- function(x,p,N){
+  -sum(dbinom(x,prob=p,size=N,log=T))
+}
+</code>
+
+E a utilizamos para calcular a log-verossimilhança negativa de cada modelo. Para o modelo 1, ela será a soma dos logaritmos das probabilidades atribuídas pela binomial com parâmetro $p=2689/3024 = 0.889$ às contagens de sobreviventes em cada grupo:
+<code rsplus> 
+N1 <- 1146
+N2 <- 797
+N3 <- 1081
+n1 <- 1044
+n2 <- 711
+n3 <- 934
+modelo1 <- LL.bin(p=(n1+n2+n3)/(N1+N2+N3),
+                  N=N1+N2+N3,x=c(n1,n2,n3))
+</code>
+
+Para o modelo 2, calculamos as log-verossimilhanças para cada classe, usando como parâmetros o total de árvores e a proporção de sobreviventes em cada classe. Como as log-verossimilhanças são aditivas, podemos calcular cada uma separadamente e depois somá-las, para obter a log-verossimilhança do modelo completo:
+
+<code rsplus>
+modelo2 <- LL.bin(p=n1/N1,N=N1,x=n1)+
+  LL.bin(p=n2/N2,N=N2,x=n2)+
+  LL.bin(p=n3/N3,N=N3,x=n3)
+</code>
+
+Para o modelo 3, calculamos a log-verossimilhança das contagens nas duas primeiras classes para parâmetros $N = 1146+797 = 1943$ e $p=(1044+711)/1943 = 0.903$, e com parâmetros $N=1031$ e $p=934/1081= 0.864$ para a classe de infestação alta. A soma destas log-verossimilhanças será a log-verossimilhança total do modelo:
+
+<code rsplus>
+modelo3 <- LL.bin(p=(n1+n2)/(N1+N2),N=N1+N2,x=c(n1,n2))+
+  LL.bin(p=n3/N3,N=N3,x=n3)
+</code>
+
+Usando a mesma lógica, calculamos a log-verossimlhança para o modelo 4:
+
+<code rsplus>
+modelo4 <- LL.bin(p=(n3+n2)/(N3+N2),N=N3+N2,x=c(n3,n2))+
+  LL.bin(p=n1/N1,N=N1,x=n1)
+</code>
+
+O primeiro modelo tem um parâmetro estimado, que é uma taxa de sobrevivência para todas as classes. Seu AIC é:
+
+<code rsplus>
+> 2*modelo1 + 2
+[1] 17811.13
+</code>
+
+E como o modelo 2 tem três parâmetros estimados, seu AIC será:
+<code rsplus>
+> 2*modelo2 + 6
+[1] 25.23459
+</code>
+
+Por fim, calculamos os AICs dos modelos 3 e 4, que têm dois parâmetros estimados:
+<code rsplus>
+> 2*modelo3 + 4
+[1] 5103.06
+> 2*modelo4 + 4
+[1] 4178.069
+</code>
+
+O modelo 2 é o mais plausível.
+
+
+==== Modelos no Teste t ====
+
+O primeiro exemplo de Teste t de Zar(1989)((Zar,J. 1999. Biostatistical Analysis. 4th Ed. Prentice)) são medidas de tempo de coagulação em pacientes que receberam dois tipos de medicamentos.
+
+<code rsplus>
+drugB <- c(8.8,8.4,7.9,8.7,9.1,9.6)
+drugG <- c(9.9,9,11.1,9.6,8.7,10.4,9.5)
+</code>
+
+O experimento foi conduzido para avaliar se estas drogas afetam de maneira diferente a coagulação. As médias e desvios-padrão amostrais são:
+
+<code rsplus>
+media.B <- mean(drugB)
+media.G <- mean(drugG)
+sd.B <- sd(drugB)
+sd.G <- sd(drugG)
+</code>
+
+Sendo a média e desvio-padrão das duas amostras combinadas (//pooled mean e pooled standard deviation//):
+
+<code rsplus>
+media.pool <- mean(c(drugB,drugG))
+sd.pool <- (var(drugB)*(length(drugB)-1)+
+            var(drugG)*(length(drugG)-1))/
+            (length(drugB)+length(drugG)-2)
+</code>
+
+Estas quantidades são usadas para calcular a estatística $t$, cuja probabilidade de assumir o valor observado sob a hipótese nula é usado para se decidir se há diferenças nas médias das populações de onde vieram as amostras. 
+
+As duas hipóteses deste teste são os seguintes modelos
+    * **Modelo 1:** as medidas são realizações de uma só distribuição normal.
+    * **Modelo 2:** As medidas tomadas de cada grupo são realizações de duas distribuição normais, com parâmetro $\mu$ diferente, mas com o mesmo parâmetro $\sigma$.
+
+Outro modelo, não contemplado neste teste é
+
+    * **Modelo 3:** As medidas tomadas de cada grupo são realizações de duas distribuições normais, com parâmetros  $\mu$ e $\sigma$ diferentes.
+
+Para comparar estes modelos, calculamos suas log-verossimilhanças negativas.  Para cada modelo usaremos como valor dos parâmetros as estimativas de médias e desvios-padrão amostrais. Note que os estimadores de desvio-padrão usados no teste t não são [[http://en.wikipedia.org/wiki/Maximum_likelihood_estimation|MLEs]].
+
+<code rsplus>
+LL1 <- -sum(dnorm(c(drugB,drugG),mean=media.pool,
+            sd=sd.pool,log=T))
+LL2 <- -sum(dnorm(drugB,mean=media.B,sd=sd.pool,log=T))+ 
+       (-sum(dnorm(drugG,mean=media.G,sd=sd.pool,log=T)))
+LL3 <- -sum(dnorm(drugB,mean=media.B,sd=sd.B,log=T))+ 
+       (-sum(dnorm(drugG,mean=media.G,sd=sd.G,log=T)))
+</code>
+
+E com estes valores calculamos os valores de AIC. Como a amostra é pequena, é preciso usar o fator de correção
+
+$$c = \frac{n}{n-K-1}$$
+
+Onde $n$ é o tamanho da amostra e $k$ o número de parâmetros do modelo. Criamos uma função para este cálculo:
+
+<code rsplus>
+fc <- function(k,n)(n/(n-k-1))
+</code>
+
+E calculamos os valores de AICc((usamos esta sigla para o AIC com correção para pequenas amostras)):
+<code rsplus>
+> 2*LL1+4*fc(2,13)
+[1] 45.04798
+> 2*LL2+6*fc(3,13)
+[1] 36.70419
+> 2*LL3+8*fc(4,13)
+[1] 38.59355
+</code>
+
+O que podemos sintetizar em uma tabela de seleção de modelos
+
+^Modelo^Log-Verossimilhança^k^$AIC_c$^$ \Delta AIC_c$^
+|1 | 19,9 | 2 | 45,1 | 8,4 | 
+|2 | 14,1 | 3 | 36,7 | 0,0 |
+|3 | 12,8 | 4 | 38,6 | 1,9 |
+
+O modelo 3,  não considerado pelo teste, é tão plausível quanto o modelo 2, que corresponde à hipótese alternativa, na abordagem de teste de significância. 
+
+No entanto, as estimativas de desvio-padrão nos modelos não são MLEs. Vamos então refazer os cálculos usando de MLEs do desvio-padrão com os comandos:
+<code rsplus>
+sd.mle = function(x)  sqrt( (1/length(x)) * sum( (x - mean(x))^2 ) )
+sd.m <- sd.mle(c(drugB,drugG))
+sd.B.m <- sd.mle(drugB)
+sd.G.m <- sd.mle(drugG)
+
+LL1.mle <- -sum(dnorm(c(drugB,drugG),mean=media.pool,
+            sd=sd.m,log=T))
+LL2.mle <- -sum(dnorm(drugB,mean=media.B,sd=sd.m,log=T))+ 
+       (-sum(dnorm(drugG,mean=media.G,sd=sd.m,log=T)))
+LL3.mle <- -sum(dnorm(drugB,mean=media.B,sd=sd.B.m,log=T))+ 
+       (-sum(dnorm(drugG,mean=media.G,sd=sd.G.m,log=T)))
+</code>
+
+O que resulta em valores diferentes. Qual sua conclusão?
+
+
+^Modelo^Log-Verossimilhança^k^$\text{AIC}_c$^$\Delta \text{AIC}_c$^
+|1 | 16,0 | 2 | 37,2 | 1,2 | 
+|2 | 13,7 | 3 | 36,0 | 0,0 |
+|3 | 12,7 | 4 | 38,4 | 3,6 |
+
+
+==== AIC como uma dupla esperança ====
+
+O Critério de Informação de Akaike é a distância relativa esperada entre dois modelos probabilísticos. 
+
+Se o modelo verdadeiro $f(x)$ é conhecido, a discrepância de um outro modelo $g(x)$ em relação a ele é dada pela distância de Kullback-Leibler:
+
+$$I(f,g)=\int f(x) \ \ln \  \frac{f(x)}{g(x | \theta)}$$
+
+
+onde $g(x | \theta)$ representa o modelo $g$ com os valores de seus parâmetros $\theta$ que dão a melhor aproximação para o modelo verdadeiro $f$. 
+
+Para distribuições discretas esta distância é:
+
+$$I(f,g)=\sum f(x_i) \ \ln \frac{f(x_i)}{g(x_i | \theta)}$$
+
+Nos dois casos esta medida expressa a discrepância em relação a um modelo fixo de referência. Por isso podemos deduzir uma medida de discrepância relativa, que para distribuições discretas é
+
+$$I(f,g)= \ C - \sum f(x_i) \ \ln \ g(x_i | \theta)\ = \ C - E_x\ [\ln \ g(x_i| \theta)]$$
+
+Onde 
+$$C \ = \sum f(x_i) \ \ln \ f(x_i) \ = \ E_x\ [\ln\  f(x_i)]$$
+
+E para distribuições contínuas:
+
+$$I(f,g)=\ C - \int f(x_i)\  \ln \ g(x_i | \theta)  \ = \ C - E_x\ [\ln \ g(x| \theta)]$$
+
+Onde 
+$$C \ = \ \int f(x_i) \ \ln \ f(x_i) \ = \ E_x\ [\ln \ f(x_i)]$$
+
+Como o modelo de referência é o mesmo, podemos usar $E_x\ [\ln \ g(x| \theta)]$ como uma medida de distância relativa entre modelos.
+
+Vamos imaginar que nosso modelo real é uma distribuição binomial com parâmetros $N=10$ e $p=0,05$, o que resulta em uma média de $Np=10 \times 0,05 = 0,5$. A Poisson que melhor aproxima este modelo é a que tem a mesma média, portanto com parâmetro $\lambda=0,5$. A sequência de comandos abaixo faz os cálculos da distância de Kullback-Leibler entre este modelo Poisson e o verdadeiro:
+
+<code rsplus>
+x <- 0:10 ## espaço amostral da binomial
+f.x <- dbinom(x,size=10,p=0.05) ## valores de f(x) para cada x
+g.x <- dpois(x,lambda=0.5) ## valores de g(x) para cada x
+log.g.x <- log(g.x) ## ln (g(x))
+</code>
+
+Uma tabela com estes valores pode ser obtida com:
+<code rsplus>
+> round(data.frame(x,f.x,g.x,log.g.x,E.log.x=-f.x*log.g.x),3)
+    x   f.x   g.x log.g.x E.log.x
+1   0 0.599 0.607  -0.500   0.299
+2   1 0.315 0.303  -1.193   0.376
+3   2 0.075 0.076  -2.579   0.193
+4   3 0.010 0.013  -4.371   0.046
+5   4 0.001 0.002  -6.451   0.006
+6   5 0.000 0.000  -8.753   0.001
+7   6 0.000 0.000 -11.238   0.000
+8   7 0.000 0.000 -13.877   0.000
+9   8 0.000 0.000 -16.650   0.000
+10  9 0.000 0.000 -19.540   0.000
+11 10 0.000 0.000 -22.536   0.000
+</code>
+
+E o obtemos valor de distância relativa com o negativo da soma da última coluna:
+<code rsplus>
+> -sum(f.x*log.g.x)
+[1] 0.9204515
+</code>
+
+No mundo real nem o modelo verdadeiro nem os parâmetros de qualquer modelo que melhor aproximam o verdadeiro são conhecidos. Tudo o que temos são modelos simples definidos a partir de nosso conhecimento do sistema, e estimativas dos parâmetros destes modelos, obtidos a partir de uma amostra.
+
+Por exemplo, tomando uma amostra de tamanho 5 da binomial
+<code rsplus>
+> set.seed(42)
+> obs <- rbinom(5,size=10,prob=0.05)
+> obs
+[1] 2 2 0 1 1
+> mean(obs)
+[1] 1.2
+</code>
+
+A melhor estimativa do parâmetro de um modelo Poisson para aproximá-la será a média amostral, $\bar x = 1.2$. 
+
+Os comandos abaixo produzem uma figura com o modelo verdadeiro binomial, o modelo Poisson que melhor o aproxima, e um modelo Poisson com parâmetro $\lambda=1.2$, estimado da amostra tomada acima.
+
+<code rsplus>
+plot(0:10,dbinom(0:10,size=10,p=0.05),,type="h",
+     lwd=3,xlab="N de sucessos", ylab="p", ylim=c(0,0.7),
+     main="X ~ Bin(N=10,p=0,05), Aproximação Poisson")
+points(0:10,dpois(0:10,lambda=0.5),col="red", pch=19,
+       cex=0.75, type="b")
+points(0:10,dpois(0:10,lambda=mean(obs)),col="blue",
+       pch=19, cex=0.75, type="b")
+legend("topright",
+       legend=c(bquote(lambda==.(mean(obs))),
+         expression(paste(lambda," = 0.5"))),pch=19,
+       col=c("blue","red"),cex=1.5)
+</code>
+
+Você deve obter uma figura como esta:
+
+{{:07-selecao:bin_pois.png|}}
+
+Nestes casos, as estimativas dos parâmetros obtidas da amostra, $\hat \theta (y)$ são variáveis aleatórias. Portanto, a distância relativa do modelo, que já é uma esperança, agora depende de outra esperança, que é o valor médio de $g(x|\theta(y))$, definido pela distribuição de valores possíveis das estimativas dos parâmetros. Com isto, temos uma esperança dupla, que expressa a distância relativa média, condicionada a um certo conjunto de dados:
+
+$$T \ = \ E_y \ E_x \ [\ln \ g(x| \widehat{\theta}(y))]$$
+
+ o Critério de Informação de Akaike é usado para estimar esta dupla esperança a partir da máxima log-verossimilhança negativa :
+
+$$AIC \ = \ -2\ \ln L( \widehat{\theta}\, | \,y) + 2 K$$
+
+Onde $L( \widehat{\theta}\, | y)$ é a log-verossimilhança máxima ((ou seja, avaliada nos mles $\widehat{\theta}$ )), e $K$ é o número de parâmetros do modelo.
+
+Agora vamos simular várias amostras da mesma binomial, calcular o AIC e a distância relativa esperada de Kullback-Leibler para os modelos Poisson com parâmetros estimados de cada uma destas amostras.
+
+Primeiro definimos uma função para o cálculo da distância estimada,((note que a distância é multiplicada pelo tamanho da amostra, veja Burnham & Anderson 2002 p. 59)) dada uma amostra ''y'' e os parâmetros do modelo verdadeiro (parâmetros da binomial, argumentos ''N'' e ''p''):
+
+<code rsplus>
+KLD.bp <- function(y,N,p){
+  x <- 0:N
+  log.gx <- -dpois(x,lambda=mean(y),log=T)
+  length(y)*sum(dbinom(x,size=N,prob=p)*log.gx)
+}
+</code>
+
+E uma função para o cálculo do AIC de uma amostra ''y''
+para a Poisson com parâmetro $\lambda$ estimado pela média amostral: 
+
+<code rsplus>
+AIC.pois <- function(x){
+  LL <- sum(dpois(x,lambda=mean(x),log=T))
+  -2*LL + 2
+}
+</code>
+
+Agora criamos 1000 amostras de tamanho 100, tomadas da binomial com parâmetros $N=10$ e $p=0.05$. Criamos um objeto matriz para guardar estes valores, sendo cada linha uma amostra:
+<code rsplus>
+sim <- matrix(rbinom(100000,size=10,p=0.05),nrow=1000)
+</code>
+
+Aplicando as funções criadas acima a cada linha da matriz teremos os valores de AIC e de Distância relativa estimada para cada amostra:
+
+<code rsplus>
+AIC.p <- apply(sim,1,AIC.pois)
+KLD.p <- apply(sim,1,KLD.bp,N=10,p=0.05)
+</code>
+
+Faça um gráfico de densidade empírica dos valores de AIC com a função [[http://finzi.psych.upenn.edu/R/library/stats/html/density.html|density]], e acrescente uma linha vertical marcando  o dobro da média dos valores da distância de Kullback-Leibler((O AIC estima o dobro da distância KL)):
+<code rsplus>
+plot(density(AIC.p))
+abline(v=2*mean(KLD.p),lty=2)
+</code>
+
+Qual sua avaliação?
+
+
+
+\\
+------------------
+\\
+=====Exercícios=====
+O exercício desta unidade está no [[http://www.lage.ib.usp.br/rserve/|notaR]].
+
+=====Questões para discussão====
+  - Faça [[http://ecologia.ib.usp.br/bie5782/doku.php?id=bie5782:02_tutoriais:tutorial7:start#ajuste_de_polinomios|este tutorial]], acrescentando aos modelos candidatos a hipótese de que o valor esperado da resposta é uma função cúbica da preditora. O tutorial usa um teste de significância para comparar os modelos. Experimente também o AIC o AICc. Inspecione as diferenças de AIC e os pesos de evidência. Ao fim discuta com seus colegas: Galileu estava certo ou perdeu algum aspecto importante do problema?
+  - O conjunto de dados [[http://finzi.psych.upenn.edu/R/library/UsingR/html/babies.html|babies]] do pacote [[http://www.math.csi.cuny.edu/UsingR|UsingR]] tem os dados de uma pesquisa sobre o impacto de tabagismo das mães sobre características de seus filhos ao nascer. As variáveis preditoras de interesse relacionam-se ao uso atual e passado de tabaco, e não são muitas. Mas há vários outros fatores a considerar, com potenciais efeitos aditivos ou interações. Proponha uma estratégia de seleção de modelos e/ou variáveis para avaliar o quanto as medidas de tabagismo afetam o peso ao nascer dos bebês. A prioridade é definir a estratégia e especificar os modelos. Não é preciso executar as análises.
+  - Burnham & Anderson desenvolvem na seção 6.9.3 de seu livro um argumento de como testes de significância e seleção de modelos podem levar a conclusões diferentes. Construa um código no R para verificar este argumento, e discuta os resultados.
+
+===== Recursos para Estudo =====
+
+==== Leituras ====
+
+=== Principal ===
+  * Information and likelihood theory. Cap.2 de Burnham, K. P., & Anderson, D. R. (2002). Model Selection and Multimodel Inference: A Practical-Theoretic Approach, 2nd ed. New York, Springer-Verlag.
+===Complementares===
+  * Burnham, K.P.; Anderson, D.R. 2001 Kullback-Leibler information as a basis for strong inference in ecological studies. Wildlife Research, v.28, p.111-119.
+  * Burnham, K. P., Anderson, D. R., & Huyvaert, K. P. (2011). AIC model selection and multimodel inference in behavioral ecology: some background, observations, and comparisons. Behavioral Ecology and Sociobiology, 65(1), 23-35.
+  * Johnson, J. B., & Omland, K. S. (2004). Model selection in ecology and evolution. Trends in ecology & evolution, 19(2), 101-108.
+  * Grueber, C.E., Nakagawa, S., Laws, R.J. and Jamieson, I.G., 2011. Multimodel inference in ecology and evolution: challenges and solutions. Journal of evolutionary biology, 24(4), pp.699-711.
+
+==== Na Internet ====
+
+  * Página de [[http://welcome.warnercnr.colostate.edu/~anderson/|David Anderson]], um dos principais divulgadores da seleção de modelos com o AIC, autor com [[http://welcome.warnercnr.colostate.edu/~kenb/|Ken Burnham]] da cartilha mais conhecida sobre o assunto [[http://www.springer.com/statistics/statistical+theory+and+methods/book/978-0-387-95364-9|(Burham & Anderson 2002)]]. Vários //links// relevantes, como [[http://welcome.warnercnr.colostate.edu/~anderson/null.html|revisões críticas de testes de hipótese nula]], respostas às críticas feitas ao uso do AIC [[http://welcome.warnercnr.colostate.edu/~anderson/PDF_files/AIC%20Myths%20and%20Misunderstandings.pdf|(AIC Myths and misunderstandings)]], e //pdfs// de [[http://welcome.warnercnr.colostate.edu/~anderson/sel_reprints.html|artigos selecionados]] sobre o assunto.
+
+  * [[http://www.garfield.library.upenn.edu/classics1981/A1981MS54100001.pdf|Comentário de H. Akaike]] sobre a descoberta do AIC,  publicado na coleção [[http://garfield.library.upenn.edu/classics.html|Citation Classics]].
+
+  * [[http://philosophy.wisc.edu/sober/akaike%20-%20b&s%203.PDF|Akaike without tears]], um artigo de Ken Burnham & Elliot Sober. Veja vários outros artigos relacionados na página de [[http://philosophy.wisc.edu/sober/index.html|E. Sober]].
+
+  * [[http://philosophy.wisc.edu/forster/papers/JMP2000.pdf|Key Concepts in Model Selection]], uma revisão crítica da seleção de modelos ( que não se esgota em AIC). Por [[http://philosophy.wisc.edu/forster/|Malcom Foster]], filósofo que considera a seleção de modelos uma das operações básicas das ciências quantitativas.
+  
+  * Castilho, L. and Prado, P., 2018. Towards a pragmatic use of statistics in ecology. [[https://www.biorxiv.org/content/early/2018/07/10/366815|bioRxiv, p.366815]]. //Uma comparação pragmática de testes de significância e seleção de modelos em delineamentos criados no contexto destes testes de significância.//
+
+== Sobre o problema de excesso de parâmetros no ajuste de modelos ==
+
+  * Mayer et al. 2010. [[ https://fermatslibrary.com/s/drawing-an-elephant-with-four-complex-parameters#email-newsletter|Drawing an elephant with four complex parameters]].  Am. J. Phys. 78, 648 (2010).
+    * Uma demonstração online do ajuste de um elefante: [[https://demonstrations.wolfram.com/FittingAnElephant/]]
+  * [[https://www.youtube.com/watch?v=zwDA3GmcwJU]|Del rigor de la ciencia]], o mesmo argumento sobre a inutilidade de modelos perfeitos, pelo genial [[https://pt.wikipedia.org/wiki/Jorge_Luis_Borges|Jorge Luis Borges]].
+
+
+
+

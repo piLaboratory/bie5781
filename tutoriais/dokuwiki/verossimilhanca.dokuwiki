@@ -1,0 +1,669 @@
+====== 3. Função de Verossimilhança   ======
+ 
+A função de verossimilhança liga nossos dados a modelos probabilísticos. Enquanto distribuições de probabilidades atribuem probabilidades a cada observação possível, a função de verossimilhança expressa a plausibilidade de diferentes modelos, dada uma mesma observação ou conjunto de dados. 
+
+Os tutoriais a seguir mostram como construir funções de verossimilhança em linguagem computacional, e também como encontrar o valor máximo destas funções com otimização computacional. Vamos fazer também algumas simulações para demonstrar propriedades das funções e dos estimadores de máxima verossimilhança, que são o resultado dessas otimizações. Como sempre, o objetivo é usar recursos computacionais para tornar mais concretos conceitos matemáticos e estatísticos.
+
+
+====== Conceitos ======
+  * Verossimilhança
+  * Função de Verossimilhança
+  * Log Verossimilhança Negativa
+  * Método da Máxima Verossimilhança
+  * Propriedades dos MLE
+  * Curva e Superfície de Verossimilhança
+  * Parâmetros Inconvenientes (//Nuisance Parameters//)
+  * Verossimilhança Estimada e Perfilhada
+  * Intervalos e Regiões de Verossimilhança
+
+====== Tutoriais ======
+
+
+
+===== Lei da Verossimilhança =====
+
+Dada uma variável aletória $X$, cujo comportamento pode ser explicado por duas hipóteses: $H_A$ e $H_B$.
+
+  * A hipótese  $H_A$ afirma que a observação $X=x$ seria observada com probabilidade $p_A(x)$.
+  * A hipótese  $H_B$ afirma que a observação $X=x$ seria observada com probabilidade $p_B(x)$.
+
+A observação $X=x$ é uma evidência em favor de  $H_A$ //__vis-a-vis__// (face-a-face)  $H_B$ se, e somente se, 
+|  $ p_A(x) > p_B(x)$.  |
+
+A **força de evidência** em favor de $H_A$ vis-a-vis $H_B$ é dada pela **razão de verossimilhança**:
+|  ${p_A(x)} / {p_b(x)}$  |
+\\
+
+
+==== Exemplo: Ninhada de Cachorro-do-Mato ====
+
+Numa ninhada de 5 filhotes de cachorros-do-mato foi observado apenas um macho.
+
+A hipótese H1 estabelece que a probabilidade de nascimento de um filhote do sexo masculino é p=1/3, enquanto que a hipótese H2 estabelece uma probabilidade p=1/2 para filhote macho.
+
+A probabilidade de observar 1 macho em 5 é:
+   * Sob H1:
+<code rsplus>
+> dbinom(1, 5, 1/3)
+[1] 0.3292181
+</code>
+
+
+  * Sob H2:
+<code rsplus>
+> dbinom(1, 5, 1/2)
+[1] 0.15625
+</code>
+
+**Questão:** Qual das duas hipóteses é mais **//plausível//**, isto é, mais **//verossímil//**?
+**R:** A hipótese H1, pois atribui mais probabilidade à observação de um macho em uma ninhada de 5 do que a hipótese H2 ($ p_H1(x) > p_H2(x)$
+
+
+**Questão:** Qual a **//força de evidência//** em favor da hipótese mais plausível (mais verossímil)?
+<code rsplus>
+> dbinom(1, 5, 1/3) / dbinom(1, 5, 1/2)
+[1] 2.106996
+</code> 
+
+**R:** Usando a razão de verossimilhanças como medida de força de evidência dos dados, a hipótese H1 é **//duas vezes mais plausível//** que a hipótese H2. Ou seja, a observação é uma evidência mais forte a favor da hipótese H1 do que da hipótese H2.
+
+
+
+
+===== Função de Verossimilhança =====
+
+A variável $X$ é uma variável aleatória com função de densidade $f_X(x; \theta)$, onde:
+    * $x$ é uma variável matemática de descreve os valores que $X$ pode assumir;
+    * $\theta$ indica os parâmetros que controlam o comportamento de $X$.
+
+Para que a função de densidade $f_X(\cdot)$ seja utilizada para calcular a **//probabilidade//** da observação $X=x$ é necessário que o valor dos parâmetros $\theta$ **//sejam conhecidos//**.
+
+Na pesquisa científica o valor dos parâmetros nunca são conhecidos.  O que a pesquisa gera são as observações a partir
+das quais se deseja //**estimar**// os parâmetros do modelo. 
+
+Assim, a função de densidade pode ser utilizada de uma forma diferente: cria-se com ela uma função dos parâmetros, mantidos os dados constantes.
+
+Essa é a **//função de verossimilhança//**, que é a função de densidade com parâmetros desconhecidos e condicionada aos dados, que são conhecidos:
+
+$$\mathcal{L} (\theta | X=x) = f_X(\theta | X = x)$$
+
+Assim, na função de verossimilhança o elemento que varia são os parâmetros ($\theta$), enquanto que o elemento
+constante é a observação ($X=x$).
+
+==== Exemplo: Ninhada de Cachorro-do-Mato ====
+
+Considere que numa ninhada de cachorro-do-mato nasceu 1 macho em 5 filhotes. 
+
+Assumindo que o número de machos numa ninhada segue a **//distribuição binomial//**, o que essa observação
+nos diz sobre a probabilidade de nascimento de filhotes machos ($p$)?
+
+Vejamos um gráfico da função de verossimilhança para os diferentes valores de $p$ que essa observação gera:
+<code rsplus>
+curve(dbinom(1, 5, p=x), from=0, to=1)
+</code>
+
+**Portanto:** O gráfico descreve uma **//curva de plausibilidade//** para os valores de probabilidade de nascer macho, dada a observação de 1 macho em 5 filhotes ((No gráfico construído, a variável foi o parâmetro $p$ da distribuição binomial.
+Apesar, deste caso específico o parâmetro ser interpretável como a probabilidade de um sucesso, isso não é a probabilidade atribuída à observação, é apenas um parâmetro da distribuição. Portanto, os valores obtidos pela função não podem ser interpretados como probabilidades.)).
+
+A função nos apresenta os valores de //**verossimilhança**//, sendo razoável assumir que eles medem a //**plausibilidade**// de cada valor do parâmetro $p$ numa escala relativa, isto é, em comparação com
+os demais valores do gráfico.
+
+\\
+**PONTO de MÁXIMO da FUNÇÃO de VEROSSIMILHANÇA**
+
+O valor de **//máxima verossimilhança//**  (= máxima plausibilidade) pode ser encontrado e colocado no gráfico:
+<code rsplus>
+theta = seq(0,1,length=100)
+y = dbinom(1, 5, p=theta)
+theta.mle = theta[ y == max(y) ]
+abline( v = theta.mle, lty=2, col="orange" )
+</code>
+
+\\
+**VEROSSIMILHANÇA RELATIVA**
+
+Podemos, então, re-escalonar o eixo-//y// (ordenadas) do gráfico em relação a esse valor máximo:
+<code rsplus>
+yrel = y / max(y)
+plot(theta, yrel, type="l", xlab="Probabilidade p", col="blue")
+abline( v = theta.mle, lty=2, col="orange" )
+</code>
+
+**Portanto:** podemos agora chamar esse gráfico de **//verossimilhança relativa//** (plausibilidade relativa) para os valores de probabilidade de nascimento de filhote macho, dada a observação de 1 macho em 5 filhotes. [Observe os valores no eixo-y]
+
+\\
+**INTERVALO DE VEROSSIMILHANÇA**
+
+Imagine que queremos encontrar nesse gráfico um intervalo para todos os valores cujo valor de **//verossimilhança relativa//** é de pelo menos 1/8 em relação ao máximo.  Isto é, o valor máximo tem **//verossimilhança relativa//** de até 8 vezes os demais valores do intervalo.
+<code rsplus>
+theta.interv = theta[ max(y)/y <= 8 ]
+lines(theta.interv, rep(1/8, length(theta.interv)), col="red", lwd=3)
+</code>
+
+
+
+
+
+
+===== Múltiplas Observações =====
+
+Geralmente, os dados científicos são obtidos na forma de **//uma amostra//** da população, sendo que essa amostra é composta de **//várias observações independentes//**.
+
+Se foram tomadas 4 observações independentes de uma variável aleatória: $X$ ($\mathbf{X}_4 = \{x_1, x_2, x_3, x_4\}$)  e cada uma delas possui uma função de verossimilhança para o parâmetro ($\theta$) do modelo, então a função de verossimilhança da amostra é o **//produto//** das funções de verossimilhança das observações independentes:
+
+$$ \mathcal{L} ( \theta |  X = \mathbf{X}_4 ) =  \mathcal{L} ( \theta | X = x_1 ) \cdot  \mathcal{L} ( \theta | X = x_2 ) \cdot  \mathcal{L} ( \theta | X = x_3 ) \cdot \mathcal{L} ( \theta | X = x_4 )$$
+
+Generalizando: se uma amostra é composta de $n$ observaçoes independentes, então a verossimilhança da amostra é
+o produto das verossimilhanças das observações individuais:
+
+$$ \mathcal{L} ( \theta |  X = \mathbf{X}_n ) =  \mathcal{L} ( \theta | X = x_1 ) \cdot  \mathcal{L} ( \theta | X = x_2 ) \cdot  \mathcal{L} ( \theta | X = x_3 ) \cdot \ldots \cdot \mathcal{L} ( \theta | X = x_n )$$
+
+$$ \mathcal{L} ( \theta |  X = \mathbf{X}_n ) = \prod_{i=1}^n \mathcal{L} ( \theta | X = x_i )$$
+
+
+
+==== Exemplo: Número de Espécies Arbóreas ====
+
+Num levantamento em floresta ombrófila densa foram contadas o número de espécies por parcelas de 900m2, obtendo-se os valores: 5, 8, 11 e 9.  Como se trata dados de contagem, a distribuição de Poisson é candidata à modelagem desses dados.
+
+Se construírmos uma **//curva de verossimilhança//** para cada observação temos:
+<code rsplus>
+curve(dpois( 5, lambda=x), 0, 30 , xlab=expression(lambda), ylab="")
+curve(dpois( 8, lambda=x), 0, 30 , add=TRUE)
+curve(dpois( 9, lambda=x), 0, 30 , add=TRUE)
+curve(dpois( 11, lambda=x), 0, 30 , add=TRUE)
+</code>
+
+Entretanto, nossa **amostra** é formada pelas quatro observações **conjuntamente** e precisamos representar uma única curva:
+<code rsplus>
+x = seq(0,30, by=0.1)
+y1 = dpois(5, lambda=x)
+y2 = dpois(8, lambda=x)
+y3 = dpois(9, lambda=x)
+y4 = dpois(11, lambda=x)
+y = y1 * y2 * y3 * y4
+plot(x, y, type="l", col="red")
+</code>
+
+Em um único passo, teríamos:
+<code rsplus>
+curve(dpois(5,x)*dpois(8,x)*dpois(9,x)*dpois(11,x), 0, 30 ,
+        xlab=expression(lambda), ylab="Verossimilhança", 
+        col="red")
+</code>
+
+\\
+
+
+
+
+===== Função de Log-Verossimilhança Negativa =====
+
+A função de verossimilhança quando aplicada a uma única observação resulta frequentemente (mas não necessariamente) em valores menores do que um.  Quando ela é aplicada a uma amostra com muitas observações, o produto das verossimilhanças individuais vai rapidamente em direção ao zero, se tornando um número muito pequeno. 
+
+Embora se possa trabalhar com a verossimilhança relativa, a função de verossimilhança é geralmente uma função de difícil tratamento matemático.
+
+Se aplicamos o logaritmo e  mudança de sinal à função de verossimilhança relativa, obtemos a **//função de log-verossimilhança negativa//** que é uma função de tratamento matemático mais simples e que resulta em valores numéricos de manipulação mais fácil.
+
+
+==== Exemplo: Número de Espécies Arbóreas ====
+
+
+Se compararmos os valores nos vetores ''c(y1,y2,y3,y4)'' e ''y'', veremos que ao fazermos o produto, obtemos números muito pequenos.
+<code rsplus>
+range(c(y1,y2,y3,y4))
+#[1] 0.0000000 0.1754674
+range(y)
+#[1] 0.0000000000 0.0001162465
+</code>
+
+Em grandes amostras, com 100 ou mais observações, esse produto gera números muito pequenos, sendo problemático o seu processamento no computador.  Por isso é conveniente utilizarmos a transformação para a função de log-verossimilhança negativa:
+<code rsplus>
+log.y = - log(y)
+log.y2= - (log(y1) + log(y2) + log(y3) + log(y4))
+plot(x, log.y, type="l", col="red", xlab=expression(lambda))
+lines(x, log.y2, col="blue")
+</code>
+Note que ''log.y'' e ''log.y2'' são identicos.
+
+=== Como Calcular a Log-Verossimilhança Negativa para uma Amostra ===
+
+No R, a log-verossimilhança negativa pode ser gerada diretamente das funções de densidade das distribuições utilizando o argumento "log = TRUE" que existe em todas elas. Vejamos uma forma mais prática (e elegante) de se gerar a função de log-verossimilhança negativa da distribuição Poisson para esse conjunto de dados:
+<code rsplus>
+library(MASS)                                         # carrega o pacote "MASS"
+args(dpois)                                           # verifica os argumentos da função "dpois"
+lpois = function(x,lambda) -dpois(x,lambda,log=TRUE)  # cria uma função da log-veros. neg.
+llikpois = Vectorize( lpois, c("x","lambda") )        # cria uma função "vetorizada" da log-veros. neg.
+x = c(5, 8, 9, 11)                                    # "x" agora são as observações
+lambda = seq(0, 30, by=0.1)                           # "lambda" o vetor com os valores do parâmetro
+lver.mat = outer( x, lambda, "llikpois" )               # uma matrix a log-veros. neg. de cada observação
+lver = apply( lver.mat, 2, sum)                       # um vetor com a log-veros. neg da amostra
+
+plot( lambda, lver, type="l", col="red", xlab=expression(lambda) )
+</code>
+
+
+\\
+
+Da mesma forma que re-escalonamos a curva de verossimilhança em relação ao seu máximo, podemos re-escalonar essa curva  de log-verossimilhança negativa em relação ao seu mínimo:
+<code rsplus>
+plot(lambda, lver - min(lver), type="l", col="red", xlab=expression(lambda) )
+</code>
+
+\\
+
+O ponto que maximiza a verossimilhança é o mesmo que **minimiza a log-verossimilhança negativa**:
+<code rsplus>
+lambda.min = lambda[ min(lver) == lver ]
+abline(v = lambda.min, lty=2, col="purple")
+</code>
+
+Note que o valor mais verossímil //graficamente// para o parâmetro $\lambda$ da Poisson é:
+<code rsplus>
+lambda.min
+#[1] 8.3 
+</code>
+que é muito próximo a média amostral, a solução analítica para o estimador de máxima verossimilhança $\lambda$ da Poisson:
+<code rsplus>
+mean(c(5,8,9,11))
+#[1] 8.25
+</code>
+
+A diferença que encontramos é apenas por causa da precisão desta solução gráfica. Que é didática mas pouco precisa.
+
+\\
+
+Também podemos estabelecer graficamente um intervalo de verossimilhança para o parâmetro $\lambda$ na curva de log-verossimilhança negativa:
+<code rsplus>
+lambda.int = lambda[ lver - min(lver) <= log(8) ]
+lines(lambda.int, rep(log(8), length(lambda.int)), col="purple", lwd=3 )
+</code>
+
+
+
+
+===== Método da Máxima Verossimilhança =====
+
+O método da Máxima Verossimilhança consiste em realizar de uma maneira mais precisa o que foi feito nos exemplos acima, isto é, encontrar a estimativa dos parâmetros de um modelo que //**maximiza**// a função de verossimilhança ou, o que é equivalente, **//minimizar//** a função de log-verossimilhança negativa.
+
+As estimativas assim geradas são chamadas de //MLE = Maximum Likelihood Estimates//.
+
+==== Minimizando a Função de Log-Verossimilhança no R ====
+
+O R possui duas funções básicas para minimizar expressões matemáticas, ou seja, para buscar os valores dos parâmetros de uma função que resultam no menor valor da função:
+  * [[http://finzi.psych.upenn.edu/R/library/stats/html/optimize.html|optimize]]: otimização unidimensional, isto é, para funções com apenas um parâmetro livre.
+  * [[http://finzi.psych.upenn.edu/R/library/stats/html/optim.html|optim]]: para otimização de funções com mais de um parâmetro livre.
+
+A partir destas funções há várias definidas especificamente para minimizar funções de verossimilhança. As duas mais usadas são a 
+[[http://finzi.psych.upenn.edu/R/library/stats4/html/mle.html|mle]] do pacote ''stats4'', e a [[http://finzi.psych.upenn.edu/R/library/bbmle/html/mle2.html|mle2]], do pacote ''bbmle''((veja também o ótimo tutorial deste pacote em [[http://finzi.psych.upenn.edu/R/library/bbmle/doc/mle2.pdf]] )). 
+
+Como o pacote ''bbmle'' foi feito por um ecólogo, para acompanhar o ótimo livro sobre modelos que usamos como referência básica, usaremos a ''mle2'' em nossos tutoriais. 
+
+A função que deve ser fornecida para a "mle2" é semelhante às funções apresentadas acima, mas nesse caso ela deve ser uma função que **soma** a log-verossimilhança negativa para cada valor dos parâmetros para **todas observações** na amostra.
+
+
+==== Exemplo: Número de Plântulas do Palmiteiro Juçara ====
+
+Nesse exemplo utilizaremos os dados de número de plântulas do palmiteiro juçara (//Euterpe edulis//) encontradas em parcelas de regeneração natural. Vamos ajustar a distribuição Poisson ao dados, o que siginifica buscar a estimativa de máxima verossimilhança do único parâmetro da distribuição Poisson ((taxa média de ocorrência de plantas por parcelas, no caso.)).
+
+<code rsplus>
+euplant = c(5, 23, 23, 17, 0, 4, 1, 0, 0, 1, 0, 2, 26, 65, 34, 14, 18, 13, 19, 7)
+length(euplant)
+mean(euplant)
+</code>
+
+É necessário criar a função de log-verossimilhança negativa da amostra para distribuição Poisson:
+<code rsplus>
+nvl = function(lambda) { -sum( dpois( euplant, lambda, log=TRUE )  ) }
+</code>
+
+Vamos encontrar a estimativa de máxima verossimilhança (MLE) do parâmetro $\lambda$:
+<code rsplus>
+library(bbmle)                                 # Primeiro carrega o pacote "bbmle"
+euplant.mle = mle2(nvl, start=list(lambda=10) )  # gera um objeto "mle"
+summary(euplant.mle)                            # resumo do objeto "mle"
+logLik(euplant.mle)                             # valor da log-verossimilhança negativa do objeto
+</code>
+
+Verifique se a MLE gerada pela função "mle" de fato corresponde à estimativa esperada teoricamente:
+<code rsplus>
+coef(euplant.mle)
+mean(euplant)
+</code>
+
+
+Para visualizar a //**curva da log-verossimilhança negativa**// use a função [[http://finzi.psych.upenn.edu/R/library/sads/html/plotprofmle.html|plotprofmle]], do pacote sads. Instale e carregue o pacote e então será possível visualizar facilmente a curva:
+
+<code rsplus>
+library(sads)
+plotprofmle( profile(euplant.mle) )
+</code>
+
+
+
+===== Propriedades dos MLE =====
+
+Os estimadores de máxima verossimilhança têm várias propriedades de um [[http://en.wikipedia.org/wiki/Estimator|estimador]] ideal. Para demonstrar estas propriedades dos MLEs é necessário lançar mão de um expediente de simulação. 
+
+A simulação consiste nos seguintes passos:
+  -  geramos um grande número de amostras de uma distribuição conhecida com valores conhecidos dos parâmetros;
+  - obtemos para cada uma das amostras simuladas as MLE;
+  - construímos gráficos da distribuição das MLE para analisar o seu comportamento.
+
+==== Consistência ====
+
+ A [[http://en.wikipedia.org/wiki/Consistent_estimator|consistência]] é a propriedade de convergir em probabilidade para o valor do parâmetro com o aumento da amostra. Para verificar a consistência, utilizaremos o MLE do desvio padrão da Gaussiana, que é sabidamente enviesado:
+
+$$ \widehat{s} = \left[  \frac{1}{n} \sum_{i=1}^n (x_i - \bar{x})^2 \right] ^{(1/2)} $$
+
+
+Primeiramente, criaremos uma função para obter esta MLE:
+<code rsplus>
+sd.mle = function(x)  sqrt( (1/length(x)) * sum( (x - mean(x))^2 ) )
+</code>
+
+Esse estimador será aplicado a amostras da distribuição Gaussiana com média 100 e desvio padrão 5, de tamanhos crescentes.
+
+Gerando a distribuição das MLE para amostras de tamanho 10:
+<code rsplus>
+samp10 = sort(rep(1:1000, 10))                      # identificador das 1000 amostras de tamanho 10
+vals10 = rnorm(1000*10, mean=10, sd=5)              # valores das observaçoes
+dens10 = density( tapply(vals10, samp10, sd.mle) )  # obtendo a MLE para cada amostra e a densidade empírica
+dens10$y = dens10$y/ max(dens10$y)                  # convertendo o valor de densidade para valor relativo ao max.
+plot( dens10, type="l", xlab="Valor Estimado", 
+        ylab="Densidade" ,main="")                    # gráfico da distribuição das MLE
+abline(v = 5, col="red", lwd=2 )                    # posição do valor do parâmetro no gráfico
+</code>
+
+Note que a distribuição das MLE das amostras de tamanho 10 não é simétrica e não parece centrada no valor do parâmetro.
+
+Gerando a distribuição das MLE para amostras de tamanho 100:
+<code rsplus>
+samp100 = sort(rep(1:1000, 100))
+vals100 = rnorm(1000*100, mean=100, sd=5)
+dens100 = density( tapply(vals100, samp100, sd.mle) )
+dens100$y = dens100$y/ max(dens100$y)
+lines( dens100, col="blue" )
+</code>
+
+Note que as MLE das amostras de tamanho 100 já tem distribuição simétrica e o ponto central se aproxima bastante do valor do parâmetro. Mais precisamente, a probabilidade de que probabilidade das estimativas estarem a uma certa distância do valor real fica cada vez menor com o aumento da amostra.
+
+
+==== Eficiência Assintótica ====
+
+A [[http://en.wikipedia.org/wiki/Efficient_estimator|eficiência assintótica]] afirma que os MLE terão a menor variância possível à medida que o tamanho de amostra aumenta.
+
+Vamos comparar a variâncias dos MLEs do desvio padrão obtidos acima (nossa função "sd.mle") contra os valores do estimador tradicional, calculados para as mesmas amostras (a função ''sd'' do R):
+<code rsplus>
+## Amostras de tamanho 10
+var( tapply(vals10, samp10, sd.mle) )
+var( tapply(vals10, samp10, sd) )
+## Amostras de tamanho 100
+var( tapply(vals100, samp100, sd.mle) )
+var( tapply(vals100, samp100, sd) )
+</code>
+
+
+==== Normalidade Assintótica ====
+
+Esta é a propriedade de [[http://en.wikipedia.org/wiki/Asymptotic_normality|distribuição assintótica]] que garante que a distribuição dos MLE ((Esta é a distribuição teórica dos MLEs que seriam obtidos se os dados fossem tomados e o modelo ajustado a eles várias vezes.)) aproximam-se de uma distribuição normal com o aumento do tamanho da amostra. Pode ser entendida como uma extensão de Teorema Central do Limite para todos os MLEs. 
+
+A melhor forma de investigar a aproximação assintótica da distribuição Gaussiana é através do gráfico Quantil-Quantil:
+<code rsplus>
+par(mfrow=c(2,1))
+qqnorm( tapply(vals10, samp10, sd.mle),
+          main="MLE do Desvio Padrão, N=10" )
+qqline( tapply(vals10, samp10, sd.mle) )
+qqnorm( tapply(vals100, samp100, sd.mle), 
+          main="MLE do Desvio Padrão, N=100")
+qqline( tapply(vals100, samp100, sd.mle) )
+par(mfrow=c(1,1))
+</code>
+
+
+==== Invariância ====
+
+A propriedade de invariância dos MLE é de difícil de comprovação por simulação, sendo mais fácil exemplificar com estimadores que não têm essa propriedade.
+
+O estimador tradicional da variância tem a propriedade de não ser viciado, independentemente do tamanho da amostra. 
+
+$$ \widehat{s^2} = \frac{ \sum_{i=1}^n (x_i - \bar{x})^2 }{ n - 1 }$$
+
+Isso pode ser comprovado com uma simulação:
+<code rsplus>
+var.trad10 = tapply( vals10, samp10, var)    # estimativas tradicionais da variância de amostras de tamanho 10
+plot( density(var.trad10), type="l" )        # distribuição das estimativas
+abline( v = mean(var.trad10) )               # média das estimativas
+abline( v = 5^2, col="red" )                 # valor do parâmetro
+</code>
+
+\\
+
+No entanto, este não é um estimador de máxima verossimilhança. Por isso a propriedade de não ser viciado não se mantém quando a variância é transformada em desvio padrão , que é uma transformação monotônica:
+
+$$ \widehat{s} = \sqrt{ \widehat{s^2}} \ = \ \sqrt{ \frac{ \sum_{i=1}^n (x_i - \bar{x})^2 }{ n - 1 } }$$
+
+
+Verifique isto repetindo a avaliação de viés feita antes para a variância:
+
+
+<code rsplus>
+sd.trad10 =  tapply(vals10, samp10, sd )
+plot(density(sd.trad10), type="l")
+abline( v = mean(sd.trad10) )
+abline( v = 5, col="red" )
+</code>
+
+
+
+===== Superfície e Curvas de Verossimilhança =====
+
+Quando temos mais de parâmetro no modelo estatístico, a função de verossimilhança se torna uma função **multivariada** e, consequentemente, ela só pode ser representada graficamente por **superfícies**.
+
+No caso de dois parâmetros, como a distribuição Gaussiana, a função de verossimilhança é **bivariada**, sendo possível construir gráficos de superfície, mas com três ou mais parâmetros a construção de gráficos e sua interpretação se torna complexa. 
+
+==== Exemplo: Superfície para uma Variável Gaussiana ====
+
+<code rsplus>
+dados = rnorm(1000, mean=150, sd=20 )                                          # gerando os dados
+m = seq(125, 175, length=50)                                                   # vetor de médias
+s = seq(10, 60, length=50)                                                     # vetor de desvio padrão
+lgauss = function(m, s, dados) -sum(stats::dnorm(dados, mean=m, sd=s, log=T))  # função de log-ver. neg.
+llikgauss = Vectorize(lgauss, c("m","s"))                                      # vetorização da função
+sup.mat = outer(m, s, llikgauss, dados)                                        # cálculo da superfície
+contour(m, s, sup.mat, xlab="Média", ylab="Desvio Padrão", nlevels=20)         # gráfico de contorno
+abline(v=150, col="red", lty=2)                                                # linha da média
+abline(h=20, col="red", lty=2)                                                 # linha do desvio padrão
+persp(m, s, sup.mat, theta=135, phi=10, col="purple")                          # gráfico de perspectiva 
+</code>
+
+
+
+==== Exemplo: Árvores de Copaifera langsdorffii no Cerradão ====
+
+//Copaifera langsdorffii// é uma espécie árborea que ocorre em várias formações florestais no Estado de São Paulo, sendo muito abundante no cerradão.  O arquivo {{copaifera.csv|copaifera.csv}} apresenta o número de árvores em 64 parcelas na Estação Ecológica de Assis.
+<code rsplus>
+copa = read.csv("copaifera.csv",header=T)
+mean(copa$narv)
+var(copa$narv)
+</code>
+
+
+A distribuição espacial da //Copaifera// é em geral agregada, de forma que o número de árvores por parcela pode ser descrita com uma distribuição Binomial Negativa com parâmetros:
+   * $k$ - parâmetro de agregação e
+   * $\mu$ - número médio de árvores por parcela.
+
+<code rsplus>
+lnbinom.x = function(k, mu, x)  -sum(dnbinom(x, size=k, mu=mu, log=T))  # função de log-veros. neg.
+lnbinom.vec = Vectorize( lnbinom.x, c("k","mu") )                       # função vectorizada
+
+k.var = seq(0.1, 10, length=50)                                        # vetor do parâmetro k
+mu.var = seq(10, 80, length=50)                                        # vetor do parâmetro mu
+sup.mat  = outer( k.var, mu.var, lnbinom.vec, x=copa$narv )            # matriz com a log-veros. neg.
+contour(k.var, mu.var, sup.mat, nlevels=20, xlab="k", ylab=expression(mu)) # gráfico de contorno
+persp(k.var, mu.var, sup.mat, theta=-35, phi=20, col="lightblue")      # gráfico de perspectiva
+</code>
+
+
+
+
+===== Verossimilhança Estimada e Verossimilhança Perfilhada =====
+
+
+Quando o modelo estatístico tem muitos parâmetros, soma-se ao problema de interpretar uma superfície multivariada a questão de alguns dos parâmetros do modelo serem //incovenientes//, isto é, não possuem uma interpretação biológica clara, mas são necessários ao modelo. 
+
+Há duas formas de contornar esse problema que permitem investigar somente o comportamento dos parâmetros de interesse um-a-um, sem a necessidade de avaliar uma superfície:
+  * a verossimilhança estimada e
+  * a verossimilhança perfilhada.
+
+A verossimilhança perfilhada é uma forma mais apropriada de estudar a superfície de verossimilhança, pois representa de modo mais fidedigno a superfície de verossimilhança na vizinhança das MLE.   
+
+Mas em algumas situações, quando não se tem à disposição os dados primários, a verossimilhança estimada pode ser a única alternativa para se analisar os dados.  
+
+Vejamos alguns exemplos:
+
+
+==== Verossimilhança Estimada ====
+
+==== Exemplo: Produção Média de Florestas ====
+
+Num inventário em floresta plantada de //Pinus// foram medidas 52 parcelas, tendo sido obtida a produção média de 243 $m^3\, ha^{-1}$, com desvio padrão de 28 $m^3\, ha^{-1}$.  Qual o intervalo de verossimilhança (razão de 8) dessas estimativa da produção ((note que a pergunta é sobre o comportamento da estimativa, e não da população de medidas de produtividade de onde ela veio)) ?
+
+Pelo Teorema Central do Limite, sabemos que a média amostral segue distribuição Gaussiana, com média igual à média populacional e desvio padrão igual ao desvio padrão populacional dividido pela raiz quadrada do tamanho da amostra.
+
+Portanto, podemos assumir que a produção média relatada é uma observação de uma distribuição Gaussiana.  Como só dispomos dessa informação poderemos avaliar apenas a variação da média, deixando o desvio padrão constante (igual ao relatado):
+
+<code rsplus>
+prod.var = seq(230, 260, length=100)                          # intervalo de variação da produção média
+lvn.prod = -dnorm(243, mean=prod.var, sd=28/sqrt(52), log=T)  # valores de log-veros. negativa
+lvn.prod = lvn.prod - min(lvn.prod)                           # valores de log-veros. negativa RELATIVA
+plot(prod.var, lvn.prod, type="l")                            # gráfico log-veros. neg. relativa
+abline(h=log(8), lty=2, col="red")                            # intervalo de verossimilhança
+</code>
+
+==== Exemplo: Árvores Bifurcadas ====
+
+Numa floresta planta de eucalipto foram encontradas 7 árvores bifurcadas numa amostra aleatória de 150.
+Deseja-se a taxa de bifurcação e um intervalo de //verossimilhança//.
+
+Neste caso a estimativa é o parâmetro $p$ de uma binomial, sendo o outro parâmetro (número de tentativas, $N$) conhecido.
+<code rsplus>
+p.var = seq(0.01, 0.10, length=100)
+lvn.binom = -dbinom(7, 150, prob=p.var, log=T)
+lvn.binom = lvn.binom - min(lvn.binom)
+plot( p.var, lvn.binom, type="l", col="red", xlab="Prob. Bifurcação")
+p.mle = p.var[lvn.binom == min (lvn.binom)]
+abline(v=p.mle, lty=2, col="blue")
+abline(h=log(8), lty=2, col="blue")
+</code>
+
+
+==== Verossimilhança Perfilhada ====
+
+==== Exemplo: Estrutura de Tamanho em Florestas ====
+
+O arquivo {{diam.csv|diam.csv}} apresenta dados do diâmetro à altura do peito (DAP) de árvores de uma parcela em floresta nativa no município de Bom Jardim, MA.
+
+Frequentemente se assume que a distribuição dos DAP das árvores em floresta tropical segue uma **distribuição exponencial**.  Existe, entretanto, a **distribuição Weibull**, bem mais geral, da qual a distribuição exponencial é um caso particular.  Quando o parâmetro da forma (//shape//) da Weibull é 1, ela se reduz a uma exponencial.
+
+Assim, podemos verificar se a distribuição exponencial é de fato um bom modelo para os dados acima, comparando-a com a Weibull.
+
+\\
+Inicialmente é necessário ler os dados do arquivo
+<code rsplus>
+dap = read.csv("diam.csv",header=T)$dap
+</code>
+
+Para ajustar a distribuição Weibull aos dados é necessário considerar que só foram medidas as árvores com DAP a partir de 14.3 cm (45cm de circunferência) e, portanto, o valor 14.3 representa um valor mínimo conhecido.
+<code rsplus>
+dap.a = dap - 14.3                                                            # 14.3 é o DAP mínimo de medição
+lweibull = function(esc, forma){
+             -sum( dweibull(dap.a, shape=forma,
+                            scale=esc, log=T) )
+              }    # função log-ver.neg. da Weibull
+
+dap.mle = mle2( lweibull, start=list(esc=10, forma=1) )                              # obtendo as MLE
+summary(dap.mle)                                                              # resumo das MLE
+
+dap.mle.p = profile( dap.mle )                # perfilhando as MLE
+par(mfrow=c(1,2))                             # preparando para 2 gráficos
+plotprofmle( dap.mle.p )                     # gráficos da veros. perfilhada
+</code>
+
+**Questão:** é razoável assumir que os dados podem ser modelados por uma distribuição exponencial?
+
+
+==== Exemplo: Árvores de Copaifera langsdorffii ====
+
+Para obtermos a curva de verossimilhança perfilhada para o modelo de Binomial Negativa nos dados de número de árvores de //Copaifera langsdorffii// devemos re-escrever a função de log-verossimilhança negativa e ajustar o modelo com a  função ''mle2''.
+<code rsplus>
+lnbinom = function(k, mu)  -sum(dnbinom(narv, size=k, mu=mu, log=T))
+narv = copa$narv
+copa.mle = mle2( lnbinom, start=list(k=2, mu=32) )
+summary(copa.mle)
+par(mfrow=c(1,2))
+plotprofmle( profile(copa.mle) )
+
+par(mfrow=c(1,1))
+contour(k.var, mu.var, sup.mat, nlevels=20, xlab="k", ylab=expression(mu))
+abline(v=coef(copa.mle)["k"], col="red")
+abline(h=coef(copa.mle)["mu"], col="red")
+</code>
+
+
+\\
+\\
+
+
+====== Exercícios ======
+
+Faça os exercícios 203.1 a 203.3 no sistema notaR. 
+====== Questões motivadoras para a dicussão ======
+Proponha questões para discutirmos em nosso subfórum. Criamos um subfórum para isso [[http://bie5781.64486.x6.nabble.com/Questoes-para-discussao-de-verossimilhanca-f146.html|aqui]].
+
+===Questões escolhidas===
+  - Na inferência por verossimilhança o espaço amostral é irrelevante, uma vez que não se considera o que poderia se amostrar, mas sim o que foi amostrado. Quais as implicações dessa característica na definição do delineamento amostral? Seria diferente do delineamento amostral quando se usa Inferência Clássica?
+  - Na análise de dados usando a Lei da Verossimilhança não se compara uma determinada hipótese a uma hipótese nula, e sim comparam-se hipóteses entre si (podendo haver mais de duas). Podemos dizer que esse tipo de análise depende mais fortemente da habilidade do pesquisador para formular hipóteses e criar modelos que explicarão melhor seus dados (já que as hipóteses não estão prontas, elas devem ser formuladas)? Seria a estatística frequentista mais adequada a pesquisadores menos experientes, menos hábeis a formularem modelos mais coerentes com a realidade? Seria possível uma transposição da ideia de hipótese nula para a abordagem de  verossimilhança?
+  - O Princípio da Verossimilhança afirma que a função de verossimilhança contém toda informação que um conjunto de dados tem sobre um dado modelo.  Quais as vantagens de se realizar a inferência com base apenas na função de verossimilhança? Quais as desvantagens?
+====== Recursos para Estudo ======
+
+
+===== Leituras =====
+
+==== Principal ====
+
+  * {{:03-funcao-veros:verossim.pdf|Batista, J.L.F. 2009 Verossimilhança e Máxima Verossimilhança.}}
+
+==== Complementares ====
+
+  * {{:leituras:jlfb-tese-livre-docencia.pdf|Batista, J.L.F. 2014 Biometria Florestal segundo o Axioma da Verossimilhança.}} ESALQ-USP, Tese de Livre Docência, 391p.
+   * Likelihood and all that. capítulo 6 de: Bolker, B.M. 2008 Ecological Models and Data in R Princeton: Princeton University Press.
+  * The Concept of Likelihood , cap.2 de: Edwards, A.W.F., 1992 Likelihood. Baltimore: John Hopkins University Press.
+  * Hobbs, N.T. & Hilborn, R. 2006. Alternatives to statistical hypothesis testing in ecology: A guide to self-teaching. Ecological Applications: 16(1): 5-19. (o [[http://www.esapubs.org/archive/appl/A016/001/appendix-A.htm|Apêndice A]] é uma excelente introdução).
+
+
+===== Na Internet =====
+
+  * Índice do pacote [[http://finzi.psych.upenn.edu/R/library/bbmle/doc/mle2.pdf|bbmle]] na página do R. 
+  * Índice do [[http://finzi.psych.upenn.edu/R/library/emdbook/html/00Index.html|emdbook]] na página do R. Este é um pacote de apoio ao livro [[http://www.zoology.ufl.edu/bolker/emdbook/index.html|Ecological Models and Data in R]].
+  * [[http://finzi.psych.upenn.edu/R/library/bbmle/doc/mle2.pdf| tutorial]] do pacote ''bbmle''. Ótimo roteiro para aplicação do método de máxima verossimilhança em R.
+  * [[http://www.cimat.mx/reportes/enlinea/D-99-10.html|"Likelihood"]]: Uma palestra de A. W. F. Edwards, um dos pioneiros na formalização e defesa do princípio da verossimilhança. 
+  * [[http://statgen.iop.kcl.ac.uk/bgim/mle/sslike_1.html|Maximum Likelihood Primer]] por S. Purcell. Feito para aplicações em genética, mas uma ótima introdução ao tema.
+  * [[http://elaestaemtudo.ime.usp.br/?portfolio=new-mobile-app-3-2-2-5-2-2-2|Renata e a máxima verossimilhança]], explicação super didática, do projeto [[http://elaestaemtudo.ime.usp.br/|Ela está em tudo (Sim, Matemática é coisa de menina)]] , do IME -USP e UFABC.
+  * Scott, C., & Nowak, R. 2004. [[http://cnx.org/content/m11446/1.5/|Maximum Likelihood Estimation.]] Connexions, May 12, 2004. 
+
+====Notebooks de deduções analíticas de MLEs====
+
+Nossos notebooks  interativos em Python demonstrando os passos para a dedução de alguns estimadores de máxima verossimilhança (MLEs). 
+
+  * Você pode executar os notebooks online no servidor [[https://mybinder.org/v2/gh/piLaboratory/bie5782/master?filepath=jupyter%2F|Binder]]. Demora um pouco para carregar. As instruções passo a passo estão na seção [[04-parametros-constantes:04-parametros-constantes#extras|"Extras"]] do tutorial sobre dedução analíticas da MLE da exponencial.
+  * Ou você pode ver as páginas estáticas dos mesmos códigos, já com os resultados (mais rápido):
+     * [[https://nbviewer.jupyter.org/github/piLaboratory/bie5782/blob/master/jupyter/.ipynb_checkpoints/MLE%20exponencial-checkpoint.ipynb|MLE da distribuição exponencial]]
+     * [[https://nbviewer.jupyter.org/github/piLaboratory/bie5782/blob/master/jupyter/MLE%20Poisson.ipynb| MLE da Poisson]]
+     * [[https://nbviewer.jupyter.org/github/piLaboratory/bie5782/blob/master/jupyter/MLE%20geom%C3%A9trica.ipynb| MLE da distribuição geométrica]]
+   * [[https://github.com/piLaboratory/bie5782|Repositório dos códigos no GitHub]] (( Contibuições são bem-vindas. Envie-nos um Pull request ou informe um [[https://github.com/piLaboratory/bie5782/issues| problema ou sugestão]] ))
+
+
+
+
+

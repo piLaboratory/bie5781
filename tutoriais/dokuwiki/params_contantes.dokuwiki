@@ -1,0 +1,503 @@
+<html>
+<script src="https://sagecell.sagemath.org/static/jquery.min.js"></script>
+<script src="https://sagecell.sagemath.org/static/embedded_sagecell.js"></script>
+<script>
+sagecell.makeSagecell({inputLocation: '.groupone', linked: true, languages: ["maxima"]})
+</script>
+</html>
+
+====== 4. Modelos com Parâmetros Constantes ======
+
+Na seção anterior vimos que a função de verossimilhança liga nossos dados a modelos probabilísticos. Nesta unidade veremos como podemos usar a função de verossimilhança para encontrar os parâmetros de uma distribuição de probabilidade que melhor descreve os dados. Em outras palavras, vamos ajustar distribuições de probabilidade a conjuntos de dados. Estes são os modelos estatísticos mais simples.
+\\
+
+
+====== Conceitos ======
+  * Distribuições de Probabilidade como Modelos
+  * Parâmetros e estimativas de máxima verossimilhança
+  * Ajuste por soluções analíticas de MLEs
+  * Ajuste por soluções numéricas de MLEs
+  * Diagnóstico de ajustes
+  * Comparação de ajustes
+
+
+====== Tutoriais ======
+
+===== Distribuição Geométrica: dedução analítica do mle =====
+
+A distribuição geométrica é um modelo simples de ser ajustado a dados porque há uma expressão para o [[03-funcao-veros:03-funcao-veros#metodo_da_maxima_verossimilhanca|MLE]] de seu parâmetro:
+
+$$\widehat p \ = \ \frac{N}{N+\sum x_i}$$
+
+Onde $N$ é o total de observações e $\sum x_i$ é a soma dos valores observados. 
+
+Como chegamos a isso? Neste caso por meio de manipulações matemáticas. Quando isso nos leva a uma expressão de funções matemáticas conhecidas dizemos que temos uma **solução analítica** ((Isso é bem raro, em geral apenas para casos simples.)). 
+
+Para ter uma ideia mais concreta deste processo, vamos refazer passo a passo a dedução analítica do mle da geométrica, com o auxílio de um sistema de álgebra simbólica, o [[http://ecovirtual.ib.usp.br/doku.php?id=ecovirt:roteiro:soft:tutmaxima|Maxima]]. Estes sistemas são programas que guardam muitas regras de manipulação de objetos matemáticos, como a álgebra. Com ele podemos conferir passo a passo a deduções matemáticas, mesmo sem lembrar de todos detalhes necessários em cada passagem da dedução.
+
+Nas caixas abaixo há comandos do Maxima que são executados por um servidor remoto. Para enviar cada comando clique no botão **Evaluate** (( Você pode também instalar o Maxima em seu computador e executar estes comandos a partir deste arquivo: {{:04-parametros-constantes:mle_geometrica.wxm}} )).
+
+===A função de log-verossimilhança ===
+
+O comando abaixo cria um objeto simbólico da função de densidade da geométrica. 
+
+
+<html>
+<div class="groupone"><script type="text/x-sage">
+P:p*(1-p)^x[i];
+</script>
+</div>
+</html>
+
+Ao executar você terá de volta apenas a expressão, o que significa que ela pode ser manipulada no Maxima. Demos à expressão o nome ''P'' para facilitar a manipulação. Começamos aplicando o logaritmo à função de densidade
+
+
+<html>
+<div class="groupone"><script type="text/x-sage">
+lP:log(P);
+</script>
+</div>
+</html>
+
+e então distribuímos os logaritmos ((lembre-se que $\log(xy)=\log x+\log y$ e que $\log x^a = a \log x$)):
+
+<html>
+<div class="groupone"><script type="text/x-sage">
+lP2: lP, logexpand=super;
+</script>
+</div>
+</html>
+
+A log-verossimilhança é a soma da expressão acima aplicada para cada dado $x_i$:
+
+<html>
+<div class="groupone"><script type="text/x-sage">
+LL:sum(lP2, i, 1, N);
+</script>
+</div>
+</html>
+
+O que é a representação no Maxima para
+
+$$\sum_{i=1}^{N}\ \log p+x_i\,\log (1-p) $$
+
+Como a somatória é apenas em $x_i$, os outros termos são tratados como constantes. Com isso a somatória restringe-se ao termo $\sum x_i$, que chamamos de $S$. O comando a seguir faz esta substituição de termos:
+
+<html>
+<div class="groupone"><script type="text/x-sage">
+LL:LL, simpsum=true;
+LL:subst(S, sum(x[i],i,1,N), LL);
+</script>
+</div>
+</html>
+
+O resultado é a representação no Maxima da subsitutição de $\sum x_i$ por  $S$ na expressão acima, que fica então:
+
+$$N  \log p\ +\ S\,\log (1-p) $$
+
+
+=== Solução de máxima verossimilhança ===
+
+O MLE $\widehat p$ é o valor do parâmetro $p$ que minimiza a função de log-verossimilhança.
+O truque para encontrar isso é achar o valor de $p$
+que faz a derivada da função ser igual a zero. Primeiro encontramos a derivada em relação a $p$ da expressão simbólica ''LL'', criada acima:
+
+<html>
+<div class="groupone"><script type="text/x-sage">
+dLL: diff(LL,p);
+</script>
+</div>
+</html>
+
+e finalmente igualamos esta expressão a zero e resolvemos para $p$:
+
+<html>
+<div class="groupone"><script type="text/x-sage">
+solve(dLL=0, p);
+</script>
+</div>
+</html>
+
+
+==== Extras ====
+
+Você pode conferir estes passos de dedução matemática também com um código Python, a partir do servidor [[https://mybinder.org/|Binder]]. Para isso:
+  - Vá para o [[https://mybinder.org/v2/gh/piLaboratory/bie5782/master?filepath=jupyter%2F|repositório Binder com os códigos]]
+  - Aguarde o repositório carregar e a máquina remota inicializar. Demora um pouco.
+  - Na aba "Files" clique em ''MLE exponencial.ipynb''. Isso abre um página com caixas de códigos e textos que os explicam ((São notebooks Jupyter. Se quiser saber mais sobre este recurso veja [[ https://jupyter.org/|aqui]] )).
+  - No menu superior clieque em "Cell", e então em "All outputs" e escolha "Clear". Isso vai limpar outputs já carregados.
+  - Clique na caixa inicial de texto "Estimador de máxima verossimilhança da distribuição exponencial". Ela deve ficar destacada. A partir daí vá clicando no botão "run" para passar para as próximas caixas e ir executando os comandos.
+  - Neste repositório há também demonstrações da dedução dos MLEs da Poisson e da Geométrica.
+
+
+===== Ajuste da Geométrica =====
+
+Ajustar uma distribuição a dados consiste em encontrar os valores mais plausíveis dos parâmetros da distribuição escolhida, condidionados aos dados. Ou seja, obter o valor do MLEs. Isso é simples quando há uma solução analítica de seus MLEs. Basta aplicar a expressão desta solução, que é uma função de quantidades obtidas dos dados. Mas além disso temos que analisar o comportamento da função de verossimilhança na vizinhança do MLE. 
+
+Vamos fazer isso ajustando a distribuição geométrica a dados de sobrevivência de aves [[http://en.wikipedia.org/wiki/Northern_lapwing|Vanellus vanellus]]. O {{:04-parametros-constantes:vanellus.csv|conjunto de dados}} é um //data frame// com o número de anos que indivíduos anilhados na Grã-Bretanha sobreviveram ((Haldane, J. B. S. (1953). Some animal life tables. Journal of the Institute of Actuaries, 83-89.))
+
+Comece importando os dados para um objeto no R:
+<code rsplus>
+(vanellus <- read.csv2("vanellus.csv"))
+</code>
+
+Note que o //data frame// tem cada valor de número de anos sobrevividos após a anilhagem e o número de aves que viveu até cada um.
+
+Agora vamos calcular o valor do MLE da geométrica para estes dados, usando sua expressão analítica(( $$\widehat p \ = \ \frac{N}{N+\sum x_i}$$, veja [[04-parametros-constantes:04-parametros-constantes#distribuicao_geometricadeducao_analitica_do_mle|tutorial anterior]] )) :
+
+<code rsplus>
+(n <- sum(vanellus$freq)) #total de observações
+(soma.x <- sum(vanellus$tempo*vanellus$freq)) #soma dos tempos
+(p <- n / (n+soma.x)) #mle
+</code>
+
+Para facilitar a construção do gráfico da curva de verossimilhança, vamos criar no R uma função de log-verossimilhança negativa (( $$\sum_{i=1}^{N}\ \log p+x_i\,\log (1-p) $$, veja também no [[04-parametros-constantes:04-parametros-constantes#distribuicao_geometricadeducao_analitica_do_mle|tutorial anterior]]  )):
+
+<code rsplus>
+nllgeom <- function(p, n, sx, rel=FALSE, p.mle){
+    nll = -n*log(p) - log(1-p) * sx
+    if(rel)
+        nll = nll - nllgeom(p.mle, n, soma.x)
+    nll
+}
+</code>
+
+Com essa função é fácil criar um gráfico com a curva de verossimilhança e traçar o intervalo de 
+verossimilhança (razão de 8). Basta usá-la para calcular a verossimilhança para uma sequência de valores do parâmetro $p$, em torno do valor do MLE:
+
+<code rsplus>
+curve(nllgeom(x, n, soma.x, rel=TRUE, p.mle=p), 0.29, 0.4,
+      col="blue", xlab="p morte Vanellus vanellus",
+      ylab="Log-Veros. Neg.", cex.lab=1.6, cex.axis=1.4)
+abline(v=p, col="red")
+</code>
+
+A linha vertical marca o MLE. Para delimitar o intervalo de verossimilhança, ou de plausibilidade, marque uma linha na altura de 1/8 da verossimilhança relativa:
+
+<code rsplus>
+abline(h=log(8), col="red", lty=2) 
+</code>
+
+Agora que você conhece a distribuição geométrica mais plausível para este conjunto de dados você pode comparar o que ela prevê com o que você observou. Isto é um maneira de avaliar a qualidade do ajuste,  sobrepondo o número previsto de sobreviventes a cada ano com as frequências observadas:
+
+<code rsplus>
+plot(freq~tempo, data=vanellus, type="h",
+     xlab="Tempo sobrevivência", ylab="Frequência")
+x <- 0:max(vanellus$tempo)
+points(x, dgeom(x, p)*n, col="blue")
+</code>
+
+
+===== Ajuste numérico da Weibull =====
+
+Soluções analíticas são muito raras, e não existem para muitos MLEs, Por exemplo, não é possível obter solução analítica para as MLEs dos parâmetros da distribuição Weibull. Nesses casos usamos aproximações numéricas, em geral com ajuda de computadores ((veja o [[03-funcao-veros:03-funcao-veros#minimizando_a_funcao_de_log-verossimilhanca_no_r|tutorial sobre função de verossimilhança]] para entender a lógica da otimização computacional em R.))
+
+Vamos usar dados de DAP de árvores de floresta de Paragominas, PA: ({{:04-parametros-constantes:parago-sobrev.csv|parago-sobrev.csv}}). Utilizaremos apenas das árvores com mais de 25cm  de DAP (variável "dap" > 25) :
+<code rsplus>
+##Leitura dos dados
+parag<- read.table("http://cmq.esalq.usp.br/BIE5781/lib/exe/fetch.php?media=04-parametros-constantes:parago-sobrev.csv", header=TRUE)
+# Seleciona daps > 25
+dap = parag$dap[ parag$dap > 25 ]
+par(mfrow=c(1,2))
+hist(dap, xlim=c(0,max(dap)))
+</code>
+
+Para evitarmos o problema do **parâmetro de locação** da Weibull, vamos trabalhar como se o DAP de 25cm fosse o ponto inicial (zero):
+<code rsplus>
+dap0 = dap - 25
+hist(dap0, xlim=c(0,max(dap)))
+par(mfrow=c(1,1))
+</code>
+
+Para ajustarmos a dist. Weibull é necessário construir a função de log-verossimilhança negativa no R:
+<code rsplus>
+x = dap0
+nllweibull = function(escala, forma, x=dap0)
+	-sum(dweibull(x, shape=forma, scale=escala, log=TRUE))
+</code>
+
+Obtemos o ajuste com a função 'mle2':
+<code rsplus>
+parag.wei = mle2(nllweibull, start=list(escala=20, forma=1))
+</code>
+
+Se quisermos olhar a superfície de log-verossimilhança negativa é necessário //vetorizar// a função log-verossimilhança negativa ((detalhes no help da função [[http://finzi.psych.upenn.edu/R/library/base/html/Vectorize.html|Vectorize]])):
+<code rsplus>
+nllweibull.V = Vectorize( nllweibull, c("escala","forma") )
+</code>
+
+Com a função vetorizada podemos construir um gráfico de linhas de contorno:
+<code rsplus>
+dx = seq(11,16, length=50)
+dy = seq(0.8, 1.1, length=50)
+z = outer( dx, dy, "nllweibull.V")
+z <- z-min(z)# verossimilhança padronizada
+contour(dx, dy, z, xlab="Escala", ylab="Forma", col="blue", cex.lab=1.6, cex.axis=1.4, lwd=2, nlevels=25)
+contour(dx, dy, z, levels=2, col="red", add=T)
+abline(v=coef(parag.wei)[1], lty=2, col="red")
+abline(h=coef(parag.wei)[2], lty=2, col="red")
+</code>
+
+As curvas de verossimilhança perfilhada são obtidas **//perfilhando//** o objeto **//mle//**, e utilizando a função [[http://finzi.psych.upenn.edu/R/library/sads/html/plotprofmle.html|plotprofmle]] do pacote sads:
+<code rsplus>
+parag.wei.prof = profile(parag.wei)
+par(mfrow=c(1,2))
+plotprofmle(parag.wei.prof)
+par(mfrow=c(1,1))
+</code>
+
+
+===== Ajuste numérico da Poisson e binomial negativa =====
+
+Também não há solução analítica para o parâmetro de disperão da binomial negativa. Neste tutorial comparamos os ajustes da binomial negativa e da Poisson((cujo mle tem solução analítica)) a dados de contagens.
+
+Vamos retomar os tutoriais sobre [[01-discretas:01-discretas#distribuicao_binomial_negativa|distribuições discretas]] em que simulamos uma distribuição agregada de plantas em uma área dividida em quadrículas (parcelas):
+
+<code rsplus>
+set.seed(42)
+cx <- runif(20,0,20)
+cy <- runif(20,0,20)
+px <- rnorm(2000)
+py <- rnorm(2000)
+x1 <- cx+px
+y1 <- cy+py
+x2 <- x1[x1>0&x1<20&y1>0&y1<20]
+y2 <- y1[x1>0&x1<20&y1>0&y1<20]
+x2.parc <- cut(x2,breaks=0:20, labels=1:20)
+y2.parc <- cut(y2,breaks=0:20, labels=LETTERS[1:20])
+</code>
+
+O numero de plantas por parcela é obtido com:
+
+<code rsplus>
+cont2 <- data.frame(table(x2.parc,y2.parc))$Freq
+</code>
+
+A avaliação visual feita no [[[[01-discretas:01-discretas#distribuicao_binomial_negativa|tutorial anterior]] indica que a variável binomial negativa é uma descrição mais adequada destes dados, comparada com a Poisson. Vamos ajustar os dois modelos e usar a função de verossimilhança para confirmar isso.
+
+Primeiro definimos funções de log-verossimilhança negativa para cada modelo:
+
+<code rsplus>
+LL.pois <- function(lam){
+  -sum(dpois(cont2,lambda=lam,log=T))
+}
+
+LL.nbin <- function(media,k){
+  -sum(dnbinom(cont2,mu=media,size=k,log=T))
+}
+</code>
+
+Em seguida minimizamos numericamente essas funções com o R ((veja o [[03-funcao-veros:03-funcao-veros#minimizando_a_funcao_de_log-verossimilhanca_no_r|tutorial sobre função de verossimilhança]] para entender essa otimização computacional.)). Para isto carregue o  pacote //bbmle// e use a função [[http://finzi.psych.upenn.edu/R/library/bbmle/html/mle2.html|mle2]]. É preciso fornecer valores iniciais razoáveis, no argumento ''start'':
+<code rsplus>
+library(bbmle) # basta uma vez por seção 
+mod1 <- mle2(LL.pois,start=list(lam=mean(cont2)))
+mod2 <- mle2(LL.nbin,start=(list(media=mean(cont2),k=0.1)))
+</code>
+
+Como esperado, a binomial negativa é um modelo muito mais plausível:
+
+<code rsplus>
+> logLik(mod1)
+'log Lik.' -1786.502 (df=1)
+> logLik(mod2)
+'log Lik.' -1014.969 (df=2)
+</code>
+
+Você pode obter um resumo dos modelo com o comando ''summary'':
+<code rsplus>
+summary(mod1)
+summary(mod2)
+</code>
+
+E podemos fazer um gráfico dos valores previsto pelos dois modelos com:
+
+<code rsplus>
+##MLEs de cada modelo
+(cf1 <- coef(mod1))
+(cf2 <- coef(mod2))
+
+##grafico
+cont2.f <- factor(cont2, levels=0:max(cont2))
+plot(table(cont2.f)/400, xlab="N de indivíduos na parcela", ylab="Proporção das parcelas")
+points(x=0:max(cont2),y=dpois(0:max(cont2),lambda=cf1), type="b", col="blue", lty=2)
+points(x=0:max(cont2),y=dnbinom(0:max(cont2),mu=cf2[1],size=cf2[2]), type="b", col="red", lty=2)
+
+</code>
+
+Por fim, avalie o perfil de verossimilhança dos dois parâmetros da binomial negativa ((para isto você vai precisar da função [[http://finzi.psych.upenn.edu/R/library/sads/html/plotprofmle.html|plotprofmle]] do pacote sads)):
+
+<code rsplus>
+library(sads)
+p.mod2 <- profile(mod2)
+par(mfrow=c(1,2))
+plotprofmle(p.mod2)
+par(mfrow=c(1,1))
+</code>
+
+===== Gráficos quantil-quantil =====
+
+Como avaliar o ajuste de uma distribuição de probabilidade aos nossos dados? O gráfico quantil-quantil (ou qqplot) oferece um critério simples: os quantis empíricos e previstos pelo modelo de distribuição devem ser iguais. 
+
+O padrão esperado são pontos ao longo da linha de equivalência (1:1) em um gráfico de dispersão dos quantis observados em função dos teóricos. Como somos capazes de perceber desvios pequenos em relação a retas, este critério visual é mais sensível do que muitos testes estatísticos de aderência.
+
+Apesar da regra de decisão simples, a maneira de construir o qqplot é menos intuitiva. Neste tutorial vamos refazê-la passo a passo, para fins didáticos ((No dia a dia você pode usar funções do R que já fazem tudo isso automaticamente)).
+
+Para começar vamos perguntar ao R quais são os **quantis empíricos**, que são os valores que delimitam uma certa proporção dos dados. O mais conhecido deles é a **mediana**, o valor que é menor do que metade dos dados ((ou maior que metade dos dados, se você preferir ;-) )). A mediana é o quantil de 50%. 
+
+Vamos usar os objetos criados no tutorial anterior de ajuste de contagens à Poisson e binomial negativa. Começamos calculando os decis dos dados, que são os quantis que delimitam cada décimo do total de valores.  A função do R que calcula quantis empíricos é a [[http://stat.ethz.ch/R-manual/R-devel/library/stats/html/quantile.html|quantile]]. Vamos usá-la para obter os quantis das contagens que estão no objeto ''cont2''.
+
+<code rsplus>
+(qqs <- data.frame(decis =seq(.1,.9,by=.1)))
+## Quantis observados
+qqs$q.obs <- quantile(cont2, qqs$decis)
+qqs
+</code>
+
+Agora adicionamos os quantis esperados para os mesmos decis, pelos modelos Poisson e binomial ajustados:
+
+<code rsplus>
+qqs$q.pois <- qpois(qqs$decis, lambda=cf1)
+qqs$q.bn <- qnbinom(qqs$decis, mu=cf2[1], size=cf2[2])
+qqs
+</code>
+
+Qual dos dois modelos faz uma melhor previsão dos decis de 10% a 90%? O gráfico quantil-quantil confronta estes valores:
+
+<code rsplus>
+par(mfrow=c(1,2))
+plot(q.obs~q.pois, data=qqs,
+     xlab="Decis previstos",
+     ylab="Decis observados",
+     main=paste("Poisson, lambda =",round(cf1,2)))
+abline(0,1, col="red")
+plot(q.obs~q.bn, data=qqs,
+     xlab="Decis previstos",
+     ylab="Decis observados",
+     main=paste("Bin. Neg., mu =",round(cf2[1],2),
+         ", k =", round(cf2[2],2)))
+abline(0,1, col="red")
+par(mfrow=c(1,1))
+</code>
+
+Os dados deste tutorial têm 400 observações, mas fizemos um gráfico com apenas nove valores. Para usar toda a informação contida nos dados precisamos calcular o quantil esperado para cada um. Começamos ordenando os valores e depois usamos a função [[http://stat.ethz.ch/R-manual/R-devel/library/stats/html/ppoints.html|ppoints]] para atribuir um percetil a cada valor:
+
+<code rsplus>
+## dados ordenados:
+cont3 <- sort(cont2)
+## percentis
+cont3.p <- ppoints(cont3)
+</code>
+
+Em seguida calculamos os quantis esperados por cada modelo
+
+<code rsplus>
+## quantis da poisson associados a cada percentil
+cont3.qp <- qpois(cont3.p, lambda=cf1)
+## quantis da bn associados a cada percentil
+cont3.qbn <- qnbinom(cont3.p, mu=cf2[1], size=cf2[2])
+</code>
+
+E finalmente fazemos os gráficos
+
+<code rsplus>
+par(mfrow=c(1,2))
+plot(cont3.qp, cont3, xlab="Qantis previstos",
+     ylab="Quantis observados",
+     main=paste("Poisson, lambda =",round(cf1,2)))
+abline(0,1, col="red")
+plot(cont3.qbn, cont3, xlab="Qantis previstos",
+     ylab="Quantis observados",
+     main=paste("Bin. Neg., mu =",round(cf2[1],2), ", k =", round(cf2[2],2)))
+abline(0,1, col="red")
+par(mfrow=c(1,1))
+</code>
+
+===CODA===
+
+Há ainda detalhes técnicos como a maneira de definir os percentis empíricos ou traçar a linha de equivalência. Há muitas funções no R com variações do qqplot. Uma bastante flexível é a [[http://www.inside-r.org/packages/cran/car/docs/qqPlot|qqPlot]], do excelente pacote [[http://socserv.socsci.mcmaster.ca/jfox/Books/Companion/index.html|car]]:
+
+<code rsplus>
+library(car)
+par(mfrow=c(1,2))
+qqPlot(cont2, distribution="pois",
+       lambda=cf1, line="robust")
+qqPlot(cont2, distribution="nbinom",
+       mu=cf2[1], size=cf2[2], line="robust")
+par(mfrow=c(1,1))
+</code>
+\\
+---------------------
+\\
+
+====== Questões motivadoras para discussão ======
+===1. Dados agregados===
+É possível definir uma função de verossimilhança para dados agregados em intervalos de classe? 
+==a) Na prática==
+Proponha um código em R para fazer o ajuste de máxima verossimilhança a uma log-normal dos dados abaixo:
+
+^Classe^Frequência^
+|0--2 |  213|
+|2--4 |  52|
+|4--6 |  12|
+|6--8 |  1|
+|8--10 |  1|
+|10--12 |  1|
+
+==b) generalizando==
+Definindo:
+    * $F_i$ : a frequência de observações na classe $i$
+    * $a_i$, $b_i$: os limites inferior e superior do intervalo de classe $i$
+    * $N$: número de classes
+    * $f(x)$: uma função de densidade probabilística
+
+Proponha uma expressão genérica para a função de log-verossmilhança de dados agregados em classes.
+
+<wrap hide>
+==Um exemplo em R==
+  * {{:04-parametros-constantes:modelos_com_classes.r|Código mostrado em sala}}
+</wrap>
+
+===2. Dados censurados e truncados===
+
+  * Explique e exemplifique o que são dados truncados e censurados.
+  * Como ajustar um modelo de distribuição a dados truncados e censurados com o método de máxima verossimilhança?
+
+===3. Binomial com parâmetro p variável===
+
+Imagine um experimento de predação similar ao descrito no item 6.2.1.1. de Bolker (2008), mas que tenha duas quantidades de girinos: 10 e 100 por tanque. Como ajustar uma distribuição binomial ao número de girinos predados permitindo que a probabilidade de predação dependa do número inicial de girinos no tanque?
+
+
+
+====== Exercícios ======
+
+Faça os exercícios desta unidade (204.1 e 204.2) no sistema [[http://www.lage.ib.usp.br/rserve/|notaR]]. 
+====== Recursos para Estudo ======
+
+===== Leituras =====
+==== Principal ====
+  * Likelihood and All That, seções 6.1 a 6.2.1.2 do Capítulo 6 de: Bolker, B.M. 2008 Ecological Models and Data in R Princeton: Princeton University Press.
+
+==== Complementar ====
+  * Anderson, D. R. (2008). Model based inference in the life sciences: a primer on evidence. New York, Springer: capítulos 2 e 3.
+
+===== Na Internet =====
+
+  * Um roteiro de ajuste de modelos na página do [[http://ecologia.ib.usp.br/let/doku.php?id=tutoriais:tut-mod|Laboratório de Ecologia Teórica]] do IB-USP.
+  * [[http://www.unl.edu/cbrassil/ELME/2007/mlR.pdf|Outro roteiro]], bem mais resumido, da [[http://www.unl.edu/cbrassil/ELME/2007/|disciplina de introdução à modelagem]] com verossimilhança de [[http://www.unl.edu/cbrassil/|Chad Brassil]].
+  * Excelentes exercícios de simulação e ajustes de distribuições no [[http://emdbolker.wikidot.com|site de apoio de Bolker (2008)]]. ((Bolker, B. (2008). Ecological Models and Data in R. Princeton, Princeton University Press.)) 
+
+====Notebooks de deduções analíticas de MLEs====
+
+Nossos notebooks  interativos em Python demonstrando os passos para a dedução de alguns estimadores de máxima verossimilhança (MLEs): 
+
+  * Você pode executar os notebooks online no servidor [[https://mybinder.org/v2/gh/piLaboratory/bie5782/master?filepath=jupyter%2F|Binder]]. Demora um pouco para carregar. As instruções passo a passo estão na seção [[04-parametros-constantes:04-parametros-constantes#extras|"Extras"]] do tutorial sobre dedução analíticas da MLE da exponencial.
+  * Ou você pode ver as páginas estáticas dos mesmos códigos, já com os resultados (mais rápido):
+     * [[https://nbviewer.jupyter.org/github/piLaboratory/bie5782/blob/master/jupyter/.ipynb_checkpoints/MLE%20exponencial-checkpoint.ipynb|MLE da distribuição exponencial]]
+     * [[https://nbviewer.jupyter.org/github/piLaboratory/bie5782/blob/master/jupyter/MLE%20Poisson.ipynb| MLE da Poisson]]
+     * [[https://nbviewer.jupyter.org/github/piLaboratory/bie5782/blob/master/jupyter/MLE%20geom%C3%A9trica.ipynb| MLE da distribuição geométrica]]
+   * [[https://github.com/piLaboratory/bie5782|Repositório dos códigos no GitHub]] (( Contibuições são bem-vindas. Envie-nos um Pull request ou informe um [[https://github.com/piLaboratory/bie5782/issues| problema ou sugestão]] ))
+
+
+=== Distribuições truncadas e censuradas ===
+  * Nadarajah, S., & Kotz, S. (2006). R Programs for Truncated Distributions. [[https://www.jstatsoft.org/article/view/v016c02|Journal of Statistical Software, 16(Code Snippet 2), 1 - 8]]
+  * Frederick Novomestky and Saralees Nadarajah (2016). truncdist: Truncated Random Variables. R package [[https://CRAN.R-project.org/package=truncdist]]
